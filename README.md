@@ -17,3 +17,4 @@ pip install .
 ## Reference
 
 - https://pypi.org/project/chrisbase/
+- https://github.com/chrisjihee/chrisbase/
