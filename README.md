@@ -1,6 +1,6 @@
 # chrisbase
 
-Common functions for Python 3
+A base tool for python programming
 
 ## Installation
 
