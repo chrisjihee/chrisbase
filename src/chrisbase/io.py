@@ -584,7 +584,8 @@ def get_python_path():
     return subprocess.run("which python".split(), stdout=subprocess.PIPE).stdout.decode('utf-8').strip()
 
 
-def set_cuda_path(cuda_paths=("/usr/local/cuda-11", "/usr/local/cuda-11.4", "/usr/local/cuda-11.3", "/usr/local/cuda-11.1")):
+def set_cuda_path(cuda_paths=("/usr/local/cuda-12.0", "/usr/local/cuda-11.4", "/usr/local/cuda-11.3", "/usr/local/cuda-11.1",
+                              "/usr/local/cuda-12", "/usr/local/cuda-11", "/usr/local/cuda")):
     cuda_dir = None
     for cuda_path in cuda_paths:
         if exists_or(cuda_path):
