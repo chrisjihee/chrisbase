@@ -206,7 +206,7 @@ class MyTimer:
             if self.verbose:
                 if self.mt > 0:
                     for _ in range(self.mt):
-                        print(file=self.line)
+                        print(file=self.file)
                 if self.rt > 0:
                     for _ in range(self.rt):
                         file_hr(c=self.rc, file=self.line)
@@ -244,7 +244,7 @@ class MyTimer:
                             file_hr(c=self.rc, file=self.line)
                 if self.mb > 0:
                     for _ in range(self.mb):
-                        print(file=self.line)
+                        print(file=self.file)
                 flush_or(sys.stdout, sys.stderr, sec=self.flush_sec if self.flush_sec else None)
             if self.mute_logger:
                 for x in self.mute_logger:
