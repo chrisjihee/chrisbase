@@ -106,11 +106,16 @@ def counts_str(counts, name=None, ks=None, name_fmt='>10', key_fmt='>9', num_fmt
     return head + body
 
 
-def to_dataframe(raw: dict | List[dict], index=None, exclude=None, columns=None):
-    if isinstance(raw, dict):
-        return pd.DataFrame.from_records(tuple(raw.items()), index=index, exclude=exclude, columns=columns)
-    elif isinstance(raw, (set, list, tuple)):
-        return pd.DataFrame.from_records(raw, index=index, exclude=exclude, columns=columns)
+def to_dataframe(raw: dict | list | tuple | set, index=None, exclude=None, columns=None):
+    if isinstance(raw, (list, tuple, set)):
+        if isinstance(next(iter(raw)), dict):
+            return pd.DataFrame.from_records(raw, index=index, exclude=exclude, columns=columns)
+        else:
+            return to_dataframe([{'value': x} for x in raw],
+                                index=index, exclude=exclude, columns=columns)
+    elif isinstance(raw, dict):
+        return to_dataframe(tuple(raw.items()),
+                            index=index, exclude=exclude, columns=columns)
     else:
         raise ValueError
 
