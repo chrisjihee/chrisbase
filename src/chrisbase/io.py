@@ -9,14 +9,14 @@ import traceback
 import warnings
 from itertools import chain
 from pathlib import Path
-from sys import stdout, stderr
+from sys import stdout
 from time import sleep
 from typing import Optional, Iterable
 
 import ipynbname
-from chrisdict import AttrDict
 from tabulate import tabulate
 
+from chrisdict import AttrDict
 from .time import *
 from .util import *
 
@@ -164,7 +164,7 @@ class MuteStd:
 
 class MyTimer:
     def __init__(self, name=None, prefix=None, postfix=None, verbose=False, mt=0, mb=0, pt=0, pb=0, rt=0, rb=0, rc='-',
-                 file=stdout, line=stderr, flush_sec=0.25, mute_logger=None, mute_warning=None):
+                 file=stdout, flush_sec=0.005, mute_logger=None, mute_warning=None):
         self.mute = open(os.devnull, 'w')
         self.name = name
         self.prefix = prefix if prefix and len(prefix) > 0 else None
@@ -178,7 +178,6 @@ class MyTimer:
         self.rb: int = rb
         self.rc: str = rc
         self.file = self.mute if not verbose else file or self.mute
-        self.line = self.mute if not verbose else line or self.mute
         self.preout = sys.stdout
         self.preerr = sys.stderr
         assert isinstance(mute_logger, (type(None), str, list, tuple, set))
@@ -209,15 +208,15 @@ class MyTimer:
                         print(file=self.file)
                 if self.rt > 0:
                     for _ in range(self.rt):
-                        file_hr(c=self.rc, file=self.line)
+                        file_hr(c=self.rc, file=self.file)
                 if self.name:
-                    print(f'{now()} {self.prefix + SP if self.prefix else NO}[INIT] {self.name}{SP + self.postfix if self.postfix else NO}', file=self.line)
+                    print(f'{now()} {self.prefix + SP if self.prefix else NO}[INIT] {self.name}{SP + self.postfix if self.postfix else NO}', file=self.file)
                     if self.rt > 0:
                         for _ in range(self.rt):
-                            file_hr(c=self.rc, file=self.line)
+                            file_hr(c=self.rc, file=self.file)
                 if self.pt > 0:
                     for _ in range(self.pt):
-                        print(file=self.line)
+                        print(file=self.file)
                 flush_or(sys.stdout, sys.stderr, sec=self.flush_sec if self.flush_sec else None)
             self.t1 = datetime.now()
             return self
@@ -233,15 +232,15 @@ class MyTimer:
             if self.verbose:
                 if self.pb > 0:
                     for _ in range(self.pb):
-                        print(file=self.line)
+                        print(file=self.file)
                 if self.rb > 0:
                     for _ in range(self.rb):
-                        file_hr(c=self.rc, file=self.line)
+                        file_hr(c=self.rc, file=self.file)
                 if self.name:
-                    print(f'{now()} {self.prefix + SP if self.prefix else NO}[EXIT] {self.name}{SP + self.postfix if self.postfix else NO} ($={str_delta(self.td)})', file=self.line)
+                    print(f'{now()} {self.prefix + SP if self.prefix else NO}[EXIT] {self.name}{SP + self.postfix if self.postfix else NO} ($={str_delta(self.td)})', file=self.file)
                     if self.rb > 0:
                         for _ in range(self.rb):
-                            file_hr(c=self.rc, file=self.line)
+                            file_hr(c=self.rc, file=self.file)
                 if self.mb > 0:
                     for _ in range(self.mb):
                         print(file=self.file)
