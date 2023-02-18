@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import random
 import re
 from itertools import groupby
 from operator import itemgetter, attrgetter
+from typing import List
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
@@ -103,8 +106,13 @@ def counts_str(counts, name=None, ks=None, name_fmt='>10', key_fmt='>9', num_fmt
     return head + body
 
 
-def to_dataframe(records, index=None, exclude=None, columns=None):
-    return pd.DataFrame.from_records(records, index=index, exclude=exclude, columns=columns)
+def to_dataframe(raw: dict | List[dict], index=None, exclude=None, columns=None):
+    if isinstance(raw, dict):
+        return pd.DataFrame.from_records(tuple(raw.items()), index=index, exclude=exclude, columns=columns)
+    elif isinstance(raw, (set, list, tuple)):
+        return pd.DataFrame.from_records(raw, index=index, exclude=exclude, columns=columns)
+    else:
+        raise ValueError
 
 
 morpheme_pattern = re.compile("([^ ]+?/[A-Z]{2,3})[+]?")
