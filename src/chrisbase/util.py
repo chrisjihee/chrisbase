@@ -106,9 +106,9 @@ def counts_str(counts, name=None, ks=None, name_fmt='>10', key_fmt='>9', num_fmt
     return head + body
 
 
-def to_dataframe(raw: list | tuple | set | dict, index=None, exclude=None, columns=None):
-    if isinstance(raw, (list, tuple, set)):
-        if isinstance(next(iter(raw)), dict):
+def to_dataframe(raw: list | tuple | dict, index=None, exclude=None, columns=None):
+    if isinstance(raw, (list, tuple)):
+        if raw and isinstance(raw[0], dict):
             return pd.DataFrame.from_records(raw, index=index, exclude=exclude, columns=columns)
         else:
             return pd.DataFrame.from_records([x for x in raw],
