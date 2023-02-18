@@ -111,11 +111,11 @@ def to_dataframe(raw: dict | list | tuple | set, index=None, exclude=None, colum
         if isinstance(next(iter(raw)), dict):
             return pd.DataFrame.from_records(raw, index=index, exclude=exclude, columns=columns)
         else:
-            return to_dataframe([{'value': x} for x in raw],
-                                index=index, exclude=exclude, columns=columns)
+            return pd.DataFrame.from_records([x for x in raw],
+                                             index=index, exclude=exclude, columns=columns)
     elif isinstance(raw, dict):
-        return to_dataframe(tuple(raw.items()),
-                            index=index, exclude=exclude, columns=columns)
+        return pd.DataFrame.from_records(tuple(raw.items()),
+                                         index=index, exclude=exclude, columns=columns)
     else:
         raise ValueError
 
