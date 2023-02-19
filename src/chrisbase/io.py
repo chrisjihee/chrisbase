@@ -164,7 +164,7 @@ class MuteStd:
 
 class MyTimer:
     def __init__(self, name=None, prefix=None, postfix=None, verbose=False, mt=0, mb=0, pt=0, pb=0, rt=0, rb=0, rc='-',
-                 file=stdout, flush_sec=0.005, mute_logger=None, mute_warning=None):
+                 file=stdout, flush_sec=None, mute_logger=None, mute_warning=None):
         self.mute = open(os.devnull, 'w')
         self.name = name
         self.prefix = prefix if prefix and len(prefix) > 0 else None
