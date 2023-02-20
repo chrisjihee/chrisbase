@@ -13,6 +13,20 @@ def now(fmt='[%m.%d %H:%M:%S]', prefix=None):
         return datetime.now().strftime(fmt)
 
 
+def after(delta: timedelta, fmt='[%m.%d %H:%M:%S]', prefix=None):
+    if prefix:
+        return f"{prefix} {(datetime.now() + delta).strftime(fmt)}"
+    else:
+        return (datetime.now() + delta).strftime(fmt)
+
+
+def before(delta: timedelta, fmt='[%m.%d %H:%M:%S]', prefix=None):
+    if prefix:
+        return f"{prefix} {(datetime.now() - delta).strftime(fmt)}"
+    else:
+        return (datetime.now() - delta).strftime(fmt)
+
+
 def from_timestamp(stamp, fmt='%Y/%m/%d %H:%M:%S'):
     return datetime.fromtimestamp(stamp, tz=timezone.utc).astimezone().strftime(fmt)
 
