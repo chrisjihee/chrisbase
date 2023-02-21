@@ -131,7 +131,7 @@ def append_intersection(a, b):
     return list(OrderedSet(a).difference(b)) + list(OrderedSet(a).intersection(b))
 
 
-def display_histogram(seqs, figsize=(10, 5), dpi=100, bins=20, rwidth=0.8, yaxis_major=-1, yaxis_minor=-1, title=None, show=True):
+def display_histogram(seqs, figsize=(8, 4), dpi=80, bins=20, rwidth=0.8, yaxis_major=-1, yaxis_minor=-1, title=None, show=True):
     plt.figure(figsize=figsize, dpi=dpi)
     axes = plt.axes()
     if yaxis_major > 0:
