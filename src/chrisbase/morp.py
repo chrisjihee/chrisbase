@@ -1,8 +1,9 @@
 import contextlib
-from sys import argv
+import json
+from pathlib import Path
+from sys import argv, stderr
+from time import sleep
 from urllib.request import urlopen
-
-from .io import *
 
 
 class MorpClient:

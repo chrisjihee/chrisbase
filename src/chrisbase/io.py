@@ -7,6 +7,7 @@ import subprocess
 import sys
 import traceback
 import warnings
+from datetime import datetime, timedelta
 from itertools import chain
 from pathlib import Path
 from sys import stdout
@@ -17,8 +18,8 @@ import ipynbname
 from tabulate import tabulate
 
 from chrisdict import AttrDict
-from .time import *
-from .util import *
+from .time import from_timestamp
+from .util import to_dataframe, tupled
 
 sys_stdout = sys.stdout
 sys_stderr = sys.stderr
