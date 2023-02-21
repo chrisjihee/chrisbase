@@ -561,7 +561,22 @@ def run_command(*args, title=None, mt=0, mb=0, pt=0, pb=0, rt=0, rb=0, rc='-', b
 
 
 def get_valid_lines(lines):
+    last_lines = {
+        ("(Epoch ", "training #1"): None,
+        ("(Epoch ", "metering #1"): None,
+    }
     for line in lines:
+        changed = True
+        if len(str(line).strip()) > 0:
+            for keys in last_lines:
+                if all(k in line for k in keys):
+                    last_lines[keys] = line
+                    changed = False
+        if changed:
+            for keys in last_lines:
+                if last_lines[keys]:
+                    yield last_lines[keys]
+                    last_lines[keys] = None
         if len(str(line).strip()) > 0:
             yield line
 
