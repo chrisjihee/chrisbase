@@ -2,7 +2,7 @@ import contextlib
 from sys import argv
 from urllib.request import urlopen
 
-from chrisbase.io import *
+from .io import *
 
 
 class MorpClient:

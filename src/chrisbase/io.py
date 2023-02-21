@@ -16,9 +16,9 @@ from typing import Optional, Iterable
 import ipynbname
 from tabulate import tabulate
 
-from chrisbase.time import *
-from chrisbase.util import *
 from chrisdict import AttrDict
+from .time import *
+from .util import *
 
 sys_stdout = sys.stdout
 sys_stderr = sys.stderr
