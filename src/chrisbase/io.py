@@ -16,9 +16,9 @@ from typing import Optional, Iterable
 import ipynbname
 from tabulate import tabulate
 
+from chrisbase.time import *
+from chrisbase.util import *
 from chrisdict import AttrDict
-from .time import *
-from .util import *
 
 sys_stdout = sys.stdout
 sys_stderr = sys.stderr
@@ -560,25 +560,26 @@ def run_command(*args, title=None, mt=0, mb=0, pt=0, pb=0, rt=0, rb=0, rc='-', b
             subprocess.run(list(map(str, args)), stdout=None if verbose else scope.mute, stderr=None if verbose else scope.mute)
 
 
-def get_valid_lines(lines):
-    last_lines = {
-        ("(Epoch ", "training #1"): None,
-        ("(Epoch ", "metering #1"): None,
-    }
+def get_valid_lines(lines,
+                    accumulating_querys=(
+                            ("(Epoch ", "training #1"),
+                            ("(Epoch ", "metering #1"),
+                    )):
+    last_lines = {query: None for query in accumulating_querys}
     for line in lines:
         changed = True
         if len(str(line).strip()) > 0:
-            for keys in last_lines:
-                if all(k in line for k in keys):
-                    last_lines[keys] = line
+            for query in last_lines:
+                if all(q in line for q in query):
+                    last_lines[query] = line
                     changed = False
         if changed:
-            for keys in last_lines:
-                if last_lines[keys]:
-                    yield last_lines[keys]
-                    last_lines[keys] = None
-        if len(str(line).strip()) > 0:
-            yield line
+            for query in last_lines:
+                if last_lines[query]:
+                    yield last_lines[query]
+                    last_lines[query] = None
+            if len(str(line).strip()) > 0:
+                yield line
 
 
 def trim_output(infile, outfile):
