@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 import shutil
 import socket
@@ -9,6 +8,7 @@ import traceback
 import warnings
 from datetime import datetime, timedelta
 from itertools import chain
+from logging import getLogger
 from pathlib import Path
 from sys import stdout
 from time import sleep
@@ -17,9 +17,9 @@ from typing import Optional, Iterable
 import ipynbname
 from tabulate import tabulate
 
+from chrisbase.time import from_timestamp
+from chrisbase.util import to_dataframe, tupled
 from chrisdict import AttrDict
-from .time import from_timestamp
-from .util import to_dataframe, tupled
 
 sys_stdout = sys.stdout
 sys_stderr = sys.stderr
@@ -130,7 +130,7 @@ class MuteStd:
 
     def __enter__(self):
         try:
-            self.mute_logger = [logging.getLogger(x) for x in self.mute_logger] if self.mute_logger else None
+            self.mute_logger = [getLogger(x) for x in self.mute_logger] if self.mute_logger else None
             if self.mute_logger:
                 for x in self.mute_logger:
                     x.disabled = True
@@ -192,7 +192,7 @@ class MyTimer:
 
     def __enter__(self):
         try:
-            self.mute_logger = [logging.getLogger(x) for x in self.mute_logger] if self.mute_logger else None
+            self.mute_logger = [getLogger(x) for x in self.mute_logger] if self.mute_logger else None
             if self.mute_logger:
                 for x in self.mute_logger:
                     x.disabled = True
