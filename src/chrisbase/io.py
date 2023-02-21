@@ -527,17 +527,6 @@ def load_attrs_with_base(file, base_name='base_conf', pre=None, post=None) -> At
     return AttrDict(merge_dicts(attrs, post))
 
 
-# def normalize_batch_size(targets, attrs, default=1) -> AttrDict:
-#     max_batch_size = attrs.pop('max_batch_size') if 'max_batch_size' in attrs else None
-#     for target in targets:
-#         if attrs[f'{target}_batch_size'] and attrs[f'{target}_batch_size'] < 1:
-#             if f'max_sequence_length={attrs.max_sequence_length}' in max_batch_size and f'precision={attrs.precision}' in max_batch_size[f'max_sequence_length={attrs.max_sequence_length}']:
-#                 attrs[f'{target}_batch_size'] = max_batch_size[f'max_sequence_length={attrs.max_sequence_length}'][f'precision={attrs.precision}']
-#             else:
-#                 attrs[f'{target}_batch_size'] = max(1, default)
-#     return attrs
-
-
 def save_attrs(obj: dict, file, keys=None, excl=None):
     if keys is not None and isinstance(keys, (list, tuple, set)):
         keys = [x for x in keys if x in obj.keys()]
@@ -569,6 +558,18 @@ def run_command(*args, title=None, mt=0, mb=0, pt=0, pb=0, rt=0, rb=0, rc='-', b
                  verbose=verbose, mt=mt, mb=mb, pt=pt, pb=pb, rt=rt, rb=rb, rc=rc) as scope:
         if real:
             subprocess.run(list(map(str, args)), stdout=None if verbose else scope.mute, stderr=None if verbose else scope.mute)
+
+
+def get_valid_lines(lines):
+    for line in lines:
+        if len(str(line).strip()) > 0:
+            yield line
+
+
+def trim_output(infile, outfile):
+    infile = Path(infile)
+    outfile = Path(outfile)
+    outfile.write_text('\n'.join(get_valid_lines(all_lines(infile))))
 
 
 def get_hostname():
