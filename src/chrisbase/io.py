@@ -418,12 +418,14 @@ def remove_dir(path, ignore_errors=False) -> Path:
     return path
 
 
-def remove_dir_check(path, ignore_errors=True, file=None):
+def remove_dir_check(path, verbose=False, ignore_errors=True, file=None):
     path = Path(path)
-    print(f"- {str(path):<40}: {OX(path.exists())}", end='', file=file)
+    if verbose:
+        print(f"- {str(path):<40}: {OX(path.exists())}", end='', file=file)
     if path.exists():
         shutil.rmtree(path, ignore_errors=ignore_errors)
-    print(f" -> {OX(path.exists())}", file=file)
+    if verbose:
+        print(f" -> {OX(path.exists())}", file=file)
     return not path.exists()
 
 
