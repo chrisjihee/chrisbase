@@ -15,10 +15,11 @@ from time import sleep
 from typing import Optional, Iterable
 
 import ipynbname
+import pandas as pd
 from tabulate import tabulate
 
-from chrisbase.time import from_timestamp
-from chrisbase.util import to_dataframe, tupled
+from chrisbase.time import from_timestamp, now, str_delta
+from chrisbase.util import to_dataframe, tupled, SP, NO, OX
 from chrisdict import AttrDict
 
 sys_stdout = sys.stdout
@@ -415,6 +416,15 @@ def remove_dir(path, ignore_errors=False) -> Path:
     path = Path(path)
     shutil.rmtree(path, ignore_errors=ignore_errors)
     return path
+
+
+def remove_dir_check(path, ignore_errors=True, file=None):
+    path = Path(path)
+    print(f"- {str(path):<40}: {OX(path.exists())}", end='', file=file)
+    if path.exists():
+        shutil.rmtree(path, ignore_errors=ignore_errors)
+    print(f" -> {OX(path.exists())}", file=file)
+    return not path.exists()
 
 
 def remove_any(path, sleep_sec=0.0) -> Path:

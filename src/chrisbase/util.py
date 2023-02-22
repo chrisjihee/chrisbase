@@ -45,6 +45,18 @@ DQ = chr(34)  # Double Quote
 SQ = chr(39)  # Single Quote
 
 
+def OK(x: bool):
+    return 'OK' if x else 'NO'
+
+
+def OX(x: bool):
+    return 'O' if x else 'X'
+
+
+def ox(x: bool):
+    return 'o' if x else 'x'
+
+
 def tupled(x: any):
     if x and not isinstance(x, (tuple, list, set)):
         return x,
