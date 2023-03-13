@@ -14,7 +14,6 @@ from sys import stdout
 from time import sleep
 from typing import Optional, Iterable
 
-import ipynbname
 import pandas as pd
 from tabulate import tabulate
 
@@ -36,16 +35,34 @@ def get_call_stack():
     )
 
 
+# https://stackoverflow.com/questions/15411967/how-can-i-check-if-code-is-executed-in-the-ipython-notebook
+def is_notebook() -> bool:
+    try:
+        from IPython.core.getipython import get_ipython
+        shell = get_ipython().__class__.__name__
+        if shell == 'ZMQInteractiveShell':
+            return True  # Jupyter notebook or qtconsole
+        elif shell == 'TerminalInteractiveShell':
+            return False  # Terminal running IPython
+        else:
+            return False  # Other type
+    except NameError:
+        return False
+
+
 def get_ipynb_path():
+    import ipynbname
     return ipynbname.path()
 
 
 def get_current_path():
-    call_stack = get_call_stack()
-    if any('run_code' in x['name'] for x in call_stack) or any('cell line' in x['name'] for x in call_stack):
-        return Path(get_ipynb_path())
+    if not is_notebook():
+        for call_stack in get_call_stack():
+            if call_stack['name'] == '<module>':
+                return Path(call_stack['file'])
+        raise RuntimeError("Cannot find current path")
     else:
-        return Path(call_stack[-1]['file'])
+        return Path(get_ipynb_path())
 
 
 def hr(c="=", w=137, t=0, b=0):
