@@ -648,6 +648,7 @@ def include_cuda_dir(candidate_dirs=None):
             break
     assert cuda_dir is not None
     os.environ['PATH'] = f"{cuda_dir}/bin:{os.environ['PATH']}"
+    return cuda_dir
 
 
 def working_gpus(gpus=None):
