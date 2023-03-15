@@ -25,6 +25,14 @@ sys_stdout = sys.stdout
 sys_stderr = sys.stderr
 
 
+def cwd(path=None):
+    if not path:
+        return Path.cwd()
+    else:
+        os.chdir(path)
+        return path
+
+
 def get_call_stack():
     def deeper():
         return list(traceback.walk_stack(None))
@@ -55,7 +63,7 @@ def get_ipynb_path():
     return ipynbname.path()
 
 
-def get_current_path():
+def get_working_file():
     if not is_notebook():
         for call_stack in get_call_stack():
             if call_stack['name'] == '<module>':
@@ -630,15 +638,25 @@ def get_python_path():
     return subprocess.run("which python".split(), stdout=subprocess.PIPE).stdout.decode('utf-8').strip()
 
 
-def set_cuda_path(cuda_paths=("/usr/local/cuda-12.0", "/usr/local/cuda-11.4", "/usr/local/cuda-11.3", "/usr/local/cuda-11.1",
-                              "/usr/local/cuda-12", "/usr/local/cuda-11", "/usr/local/cuda")):
+def include_cuda_dir(candidate_dirs=None):
+    if candidate_dirs is None:
+        candidate_dirs = sorted(dirs("/usr/local/cuda*"), reverse=True)
     cuda_dir = None
-    for cuda_path in cuda_paths:
+    for cuda_path in candidate_dirs:
         if exists_or(cuda_path):
             cuda_dir = cuda_path
             break
     assert cuda_dir is not None
     os.environ['PATH'] = f"{cuda_dir}/bin:{os.environ['PATH']}"
+
+
+def working_gpus(gpus=None):
+    if not gpus:
+        return os.environ["CUDA_VISIBLE_DEVICES"]
+    else:
+        os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+        os.environ["CUDA_VISIBLE_DEVICES"] = gpus
+        return gpus
 
 
 def set_torch_ext_path(dev=1):
