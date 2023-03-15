@@ -667,12 +667,10 @@ def include_cuda_bin_dir(candidate_dirs=None) -> Path:
 
 
 def working_gpus(gpus=None):
-    if not gpus:
-        return os.environ.get("CUDA_VISIBLE_DEVICES")
-    else:
+    if gpus:
         os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
         os.environ["CUDA_VISIBLE_DEVICES"] = gpus
-        return gpus
+    return os.environ.get("CUDA_VISIBLE_DEVICES")
 
 
 def set_torch_ext_path(dev=1):
