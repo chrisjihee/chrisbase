@@ -25,12 +25,12 @@ sys_stdout = sys.stdout
 sys_stderr = sys.stderr
 
 
-def cwd(path=None):
+def cwd(path=None) -> Path:
     if not path:
         return Path.cwd()
     else:
         os.chdir(path)
-        return path
+        return Path(path)
 
 
 def get_call_stack():
@@ -58,19 +58,17 @@ def is_notebook() -> bool:
         return False
 
 
-def get_ipynb_path():
-    import ipynbname
-    return ipynbname.path()
-
-
-def get_working_file():
-    if not is_notebook():
+def working_file(known_path: Path or str = None):
+    if known_path and exists_or(Path(known_path)):
+        return Path(known_path)
+    elif is_notebook():
+        import ipynbname
+        return ipynbname.path()
+    else:
         for call_stack in get_call_stack():
             if call_stack['name'] == '<module>':
                 return Path(call_stack['file'])
         raise RuntimeError("Cannot find current path")
-    else:
-        return Path(get_ipynb_path())
 
 
 def hr(c="=", w=137, t=0, b=0):
@@ -294,15 +292,15 @@ def exists_or(path):
 
 def first_path_or(path):
     try:
-        return paths(path)[0]
-    except IndexError:
+        return next(iter(paths(path)))
+    except StopIteration:
         return None
 
 
 def first_or(xs):
     try:
         return next(iter(xs))
-    except IndexError:
+    except StopIteration:
         return None
 
 
@@ -642,22 +640,22 @@ def get_hostaddr() -> str:
     return socket.gethostbyname(get_hostname())
 
 
-def include_cuda_dir(candidate_dirs=None):
+def include_cuda_bin_dir(candidate_dirs=None) -> Path:
     if candidate_dirs is None:
         candidate_dirs = sorted(dirs("/usr/local/cuda*"), reverse=True)
     cuda_dir = None
-    for cuda_path in candidate_dirs:
-        if exists_or(cuda_path):
-            cuda_dir = cuda_path
+    for candidate_dir in candidate_dirs:
+        if exists_or(candidate_dir) and exists_or(f"{candidate_dir}/bin"):
+            cuda_dir = Path(candidate_dir)
             break
-    assert cuda_dir is not None
-    os.environ['PATH'] = f"{cuda_dir}/bin:{os.environ['PATH']}"
+    if cuda_dir:
+        os.environ['PATH'] = f"{cuda_dir}/bin:{os.environ['PATH']}"
     return cuda_dir
 
 
 def working_gpus(gpus=None):
     if not gpus:
-        return os.environ["CUDA_VISIBLE_DEVICES"]
+        return os.environ.get("CUDA_VISIBLE_DEVICES")
     else:
         os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
         os.environ["CUDA_VISIBLE_DEVICES"] = gpus
