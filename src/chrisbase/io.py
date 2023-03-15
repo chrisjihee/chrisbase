@@ -598,6 +598,14 @@ def run_command(*args, title=None, mt=0, mb=0, pt=0, pb=0, rt=0, rb=0, rc='-', b
             subprocess.run(list(map(str, args)), stdout=None if verbose else scope.mute, stderr=None if verbose else scope.mute)
 
 
+def read_command_out(*args):
+    return subprocess.run(list(map(str, args)), stdout=subprocess.PIPE).stdout.decode('utf-8')
+
+
+def read_command_err(*args):
+    return subprocess.run(list(map(str, args)), stderr=subprocess.PIPE).stderr.decode('utf-8')
+
+
 def get_valid_lines(lines,
                     accumulating_querys=(
                             ("(Epoch ", "training #1"),
@@ -626,16 +634,12 @@ def trim_output(infile, outfile):
     outfile.write_text('\n'.join(get_valid_lines(all_lines(infile))))
 
 
-def get_hostname():
+def get_hostname() -> str:
     return socket.gethostname()
 
 
-def get_hostaddr():
+def get_hostaddr() -> str:
     return socket.gethostbyname(get_hostname())
-
-
-def get_python_path():
-    return subprocess.run("which python".split(), stdout=subprocess.PIPE).stdout.decode('utf-8').strip()
 
 
 def include_cuda_dir(candidate_dirs=None):
