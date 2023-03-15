@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import dataclasses
 import random
 import re
+from dataclasses import asdict
 from itertools import groupby
 from operator import itemgetter, attrgetter
 
@@ -119,13 +121,19 @@ def counts_str(counts, name=None, ks=None, name_fmt='>10', key_fmt='>9', num_fmt
 
 
 def to_dataframe(raw, index=None, exclude=None, columns=None):
-    if isinstance(raw, (list, tuple)):
+    if dataclasses.is_dataclass(raw):
+        if not columns:
+            columns = ["key", "value"]
+        return to_dataframe(asdict(raw), index=index, exclude=exclude, columns=columns)
+    elif isinstance(raw, (list, tuple)):
         if raw and isinstance(raw[0], dict):
             return pd.DataFrame.from_records(raw, index=index, exclude=exclude, columns=columns)
         else:
             return pd.DataFrame.from_records([x for x in raw],
                                              index=index, exclude=exclude, columns=columns)
     elif isinstance(raw, dict):
+        if not columns:
+            columns = ["key", "value"]
         return pd.DataFrame.from_records(tuple(raw.items()),
                                          index=index, exclude=exclude, columns=columns)
     else:
