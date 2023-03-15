@@ -6,6 +6,7 @@ import subprocess
 import sys
 import traceback
 import warnings
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from itertools import chain
 from logging import getLogger
@@ -18,7 +19,7 @@ import pandas as pd
 from tabulate import tabulate
 
 from chrisbase.time import from_timestamp, now, str_delta
-from chrisbase.util import to_dataframe, tupled, SP, NO, OX
+from chrisbase.util import tupled, SP, NO, OX
 from chrisdict import AttrDict
 
 sys_stdout = sys.stdout
@@ -58,7 +59,7 @@ def is_notebook() -> bool:
         return False
 
 
-def working_file(known_path: Path or str = None):
+def running_file(known_path: Path or str = None):
     if known_path and exists_or(Path(known_path)):
         return Path(known_path)
     elif is_notebook():
@@ -338,6 +339,7 @@ def glob_files(path, glob: str):
 
 
 def paths_info(*xs, to_pathlist=paths, to_filename=str, sort_key=None):
+    from chrisbase.util import to_dataframe
     records = []
     all_paths = []
     for path in xs:
@@ -636,8 +638,19 @@ def get_hostname() -> str:
     return socket.gethostname()
 
 
-def get_hostaddr() -> str:
-    return socket.gethostbyname(get_hostname())
+def get_hostaddr(default="127.0.0.1") -> str:
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as st:
+        st.connect(("8.8.8.8", 80))
+        r = first_or(st.getsockname())
+        return r if r else default
+
+
+def prepend_to_global_path(*xs):
+    os.environ['PATH'] = os.pathsep.join(map(str, xs)) + os.pathsep + os.environ['PATH']
+
+
+def append_to_global_path(*xs):
+    os.environ['PATH'] = os.environ['PATH'] + os.pathsep + os.pathsep.join(map(str, xs))
 
 
 def include_cuda_bin_dir(candidate_dirs=None) -> Path:
@@ -649,7 +662,7 @@ def include_cuda_bin_dir(candidate_dirs=None) -> Path:
             cuda_dir = Path(candidate_dir)
             break
     if cuda_dir:
-        os.environ['PATH'] = f"{cuda_dir}/bin:{os.environ['PATH']}"
+        prepend_to_global_path(f"{cuda_dir}/bin")
     return cuda_dir
 
 
@@ -669,3 +682,29 @@ def set_torch_ext_path(dev=1):
 
 def set_tokenizers_parallelism(value=False):
     os.environ["TOKENIZERS_PARALLELISM"] = f"{value}".lower()
+
+
+def environ_to_dataframe(max_value_len=200, columns=None):
+    from chrisbase.util import to_dataframe
+    return to_dataframe(copy_dict(dict(os.environ),
+                                  keys=[x for x in sorted(os.environ.keys()) if len(str(os.environ[x])) <= max_value_len]),
+                        columns=columns)
+
+
+@dataclass
+class BasicProjectEnv:
+    hostname: str = field(init=False)
+    hostaddr: str = field(init=False)
+    python_path: Path = field(init=False)
+    project_name: str = field()
+    project_path: Path = field(init=False)
+    working_path: Path = field(init=False)
+    running_file: Path = field(init=False)
+
+    def __post_init__(self):
+        self.hostname = get_hostname()
+        self.hostaddr = get_hostaddr()
+        self.python_path = Path(sys.executable)
+        self.project_path = cwd(first_or([x for x in running_file().parents if self.project_name and x.name.startswith(self.project_name)]))
+        self.working_path = Path.cwd()
+        self.running_file = running_file().relative_to(self.working_path)
