@@ -465,7 +465,7 @@ def remove_any(path, sleep_sec=0.0) -> Path:
     return path
 
 
-def load_json(path, **kwargs) -> dict:
+def load_json(path: str | Path, **kwargs) -> dict:
     file = Path(path)
     assert file.exists() and file.is_file(), f"file={file}"
     try:
@@ -476,7 +476,7 @@ def load_json(path, **kwargs) -> dict:
         raise RuntimeError(f"Please validate json file!\n- path: {path}\n- type: {type(e).__qualname__}\n- detail: {e}")
 
 
-def save_json(obj, path, **kwargs):
+def save_json(obj: dict, path: str | Path, **kwargs):
     file = make_parent_dir(Path(path))
     with file.open("w") as f:
         json.dump(obj, f, **kwargs)
