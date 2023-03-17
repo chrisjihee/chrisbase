@@ -706,3 +706,13 @@ class BasicProjectEnv:
         self.project_path = cwd(first_or([x for x in running_file().parents if self.project_name and x.name.startswith(self.project_name)]))
         self.working_path = Path.cwd()
         self.running_file = running_file().relative_to(self.working_path)
+
+    def __enter__(self) -> "BasicProjectEnv":
+        return self
+
+    def __exit__(self, type_, value, traceback_) -> "BasicProjectEnv":
+        from chrisbase.util import to_dataframe
+        if self.running_file.suffix == '.py':
+            out_table(to_dataframe(self, columns=[BasicProjectEnv.__name__, "value"]))
+            out_hr(c='-')
+        return self
