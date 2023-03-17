@@ -188,7 +188,7 @@ class MuteStd:
             exit(22)
 
 
-class MyTimer:
+class JobTimer:
     def __init__(self, name=None, prefix=None, postfix=None, verbose=False, mt=0, mb=0, pt=0, pb=0, rt=0, rb=0, rc='-',
                  file=stdout, flush_sec=None, mute_logger=None, mute_warning=None):
         self.mute = open(os.devnull, 'w')
@@ -592,8 +592,8 @@ def save_rows(rows, file, open_mode='w', keys=None, excl=None, with_column_name=
 
 
 def run_command(*args, title=None, mt=0, mb=0, pt=0, pb=0, rt=0, rb=0, rc='-', bare=False, verbose=True, real=True):
-    with MyTimer(name=None if bare else f"run_command({title})" if title else f"run_command{args}",
-                 verbose=verbose, mt=mt, mb=mb, pt=pt, pb=pb, rt=rt, rb=rb, rc=rc) as scope:
+    with JobTimer(name=None if bare else f"run_command({title})" if title else f"run_command{args}",
+                  verbose=verbose, mt=mt, mb=mb, pt=pt, pb=pb, rt=rt, rb=rb, rc=rc) as scope:
         if real:
             subprocess.run(list(map(str, args)), stdout=None if verbose else scope.mute, stderr=None if verbose else scope.mute)
 
