@@ -16,11 +16,11 @@ from time import sleep
 from typing import Optional, Iterable
 
 import pandas as pd
+from chrisdict import AttrDict
 from tabulate import tabulate
 
 from chrisbase.time import from_timestamp, now, str_delta
 from chrisbase.util import tupled, SP, NO, OX
-from chrisdict import AttrDict
 
 sys_stdout = sys.stdout
 sys_stderr = sys.stderr
@@ -690,7 +690,7 @@ def environ_to_dataframe(max_value_len=200, columns=None):
 
 
 @dataclass
-class BasicProjectEnv:
+class BaseProjectEnv:
     hostname: str = field(init=False)
     hostaddr: str = field(init=False)
     python_path: Path = field(init=False)
@@ -706,13 +706,3 @@ class BasicProjectEnv:
         self.project_path = cwd(first_or([x for x in running_file().parents if self.project_name and x.name.startswith(self.project_name)]))
         self.working_path = Path.cwd()
         self.running_file = running_file().relative_to(self.working_path)
-
-    def __enter__(self) -> "BasicProjectEnv":
-        return self
-
-    def __exit__(self, type_, value, traceback_) -> "BasicProjectEnv":
-        from chrisbase.util import to_dataframe
-        if self.running_file.suffix == '.py':
-            out_table(to_dataframe(self, columns=[BasicProjectEnv.__name__, "value"]))
-            out_hr(c='-')
-        return self
