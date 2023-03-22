@@ -120,7 +120,7 @@ def counts_str(counts, name=None, ks=None, name_fmt='>10', key_fmt='>9', num_fmt
     return head + body
 
 
-def to_dataframe(raw, index=None, exclude=None, columns=None):
+def to_dataframe(raw, index=None, exclude=None, columns=None, data_exclude=None, data_prefix=None):
     if dataclasses.is_dataclass(raw):
         if not columns:
             columns = ["key", "value"]
