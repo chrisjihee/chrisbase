@@ -74,8 +74,9 @@ def download_ngrok(to, ver=None):
     print(f"Extract to {to}")
     with zipfile.ZipFile(download_path, "r") as zip_ref:
         zip_ref.extractall(to)
-    print(f"Copy {Path(to, fname())} to {Path(to, fname(ver=ver))}")
-    shutil.copy(Path(to, fname()), Path(to, fname(ver=ver)))
+    if str(Path(to, fname())) != str(Path(to, fname(ver=ver))):
+        print(f"Copy {Path(to, fname())} to {Path(to, fname(ver=ver))}")
+        shutil.copy(Path(to, fname()), Path(to, fname(ver=ver)))
 
 
 def install_ngrok(home=None, ver=None):
@@ -90,12 +91,18 @@ def install_ngrok(home=None, ver=None):
 
 def configure_ngrok(authtoken, home=None, ver=None):
     ngrok_exe = install_ngrok(home=home, ver=ver)
-    if ver >= 3:
-        command = (ngrok_exe, "config", "add-authtoken", authtoken)
-    else:
+    if not ver or ver < 3:
         command = (ngrok_exe, "authtoken", authtoken)
+    else:
+        command = (ngrok_exe, "config", "add-authtoken", authtoken)
     run_command(*command)
     return read_command_out(*command).strip().split("file: ")[-1].strip()
+
+
+def version_ngrok(home=None, ver=None):
+    ngrok_exe = install_ngrok(home=home, ver=ver)
+    command = (ngrok_exe, "version")
+    return read_command_out(*command).strip().split(" ")[-1]
 
 
 def run_ngrok(port, home=None, ver=None, sleep_sec=3):
