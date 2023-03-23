@@ -17,6 +17,7 @@ from typing import Optional, Iterable
 
 import pandas as pd
 from chrisdict import AttrDict
+from dataclasses_json import DataClassJsonMixin
 from tabulate import tabulate
 
 from chrisbase.time import from_timestamp, now, str_delta
@@ -661,12 +662,11 @@ def environ_to_dataframe(max_value_len=200, columns=None):
 
 
 @dataclass
-class BaseProjectEnv:
+class ProjectEnv(DataClassJsonMixin):
+    project: str = field()
     hostname: str = field(init=False)
     hostaddr: str = field(init=False)
     python_path: Path = field(init=False)
-    project_name: str = field()
-    project_path: Path = field(init=False)
     working_path: Path = field(init=False)
     running_file: Path = field(init=False)
 
@@ -674,6 +674,5 @@ class BaseProjectEnv:
         self.hostname = get_hostname()
         self.hostaddr = get_hostaddr()
         self.python_path = Path(sys.executable)
-        self.project_path = cwd(first_or([x for x in running_file().parents if self.project_name and x.name.startswith(self.project_name)]))
-        self.working_path = Path.cwd()
+        self.working_path = cwd(first_or([x for x in running_file().parents if self.project and x.name.startswith(self.project)]))
         self.running_file = running_file().relative_to(self.working_path)
