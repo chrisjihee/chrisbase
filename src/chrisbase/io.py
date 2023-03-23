@@ -591,7 +591,7 @@ def save_rows(rows, file, open_mode='w', keys=None, excl=None, with_column_name=
             print('\t'.join(map(str, [row[k] for k in keys])), file=out)
 
 
-def run_command(*args, title=None, mt=0, mb=0, pt=0, pb=0, rt=0, rb=0, rc='-', bare=False, verbose=True, real=True):
+def run_command(*args, title=None, mt=0, mb=0, pt=0, pb=0, rt=0, rb=0, rc='-', bare=True, verbose=True, real=True):
     with JobTimer(name=None if bare else f"run_command({title})" if title else f"run_command{args}",
                   verbose=verbose, mt=mt, mb=mb, pt=pt, pb=pb, rt=rt, rb=rb, rc=rc) as scope:
         if real:
