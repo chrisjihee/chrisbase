@@ -653,35 +653,6 @@ def append_to_global_path(*xs):
     os.environ['PATH'] = os.environ['PATH'] + os.pathsep + os.pathsep.join(map(str, xs))
 
 
-def include_cuda_bin_dir(candidate_dirs=None) -> Path:
-    if candidate_dirs is None:
-        candidate_dirs = sorted(dirs("/usr/local/cuda*"), reverse=True)
-    cuda_dir = None
-    for candidate_dir in candidate_dirs:
-        if exists_or(candidate_dir) and exists_or(f"{candidate_dir}/bin"):
-            cuda_dir = Path(candidate_dir)
-            break
-    if cuda_dir:
-        prepend_to_global_path(f"{cuda_dir}/bin")
-    return cuda_dir
-
-
-def working_gpus(gpus=None):
-    if gpus:
-        os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-        os.environ["CUDA_VISIBLE_DEVICES"] = gpus
-    return os.environ.get("CUDA_VISIBLE_DEVICES")
-
-
-def set_torch_ext_path(dev=1):
-    torch_ext_dir = Path(f"cache/torch_extensions/dev={dev}")
-    os.environ['TORCH_EXTENSIONS_DIR'] = f"{torch_ext_dir.absolute()}"
-
-
-def set_tokenizers_parallelism(value=False):
-    os.environ["TOKENIZERS_PARALLELISM"] = f"{value}".lower()
-
-
 def environ_to_dataframe(max_value_len=200, columns=None):
     from chrisbase.util import to_dataframe
     return to_dataframe(copy_dict(dict(os.environ),
