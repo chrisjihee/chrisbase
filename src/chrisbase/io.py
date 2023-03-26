@@ -674,5 +674,7 @@ class ProjectEnv(DataClassJsonMixin):
         self.hostname = get_hostname()
         self.hostaddr = get_hostaddr()
         self.python_path = Path(sys.executable)
-        self.working_path = cwd(first_or([x for x in running_file().parents if self.project and x.name.startswith(self.project)]))
+        project_path = first_or([x for x in running_file().parents if self.project and x.name.startswith(self.project)])
+        assert project_path, f"Could not find project path for {self.project} in {[str(x) for x in running_file().parents]}"
+        self.working_path = cwd(project_path)
         self.running_file = running_file().relative_to(self.working_path)
