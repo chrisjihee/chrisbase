@@ -671,10 +671,11 @@ class ProjectEnv(DataClassJsonMixin):
     running_file: Path = field(init=False)
 
     def __post_init__(self):
+        assert self.project, "Project name must be provided"
         self.hostname = get_hostname()
         self.hostaddr = get_hostaddr()
         self.python_path = Path(sys.executable)
-        project_path = first_or([x for x in running_file().parents if self.project and x.name.startswith(self.project)])
-        assert project_path, f"Could not find project path for {self.project} in {[str(x) for x in running_file().parents]}"
-        self.working_path = cwd(project_path)
+        self.project_path = first_or([x for x in running_file().parents if x.name.startswith(self.project)])
+        assert self.project_path, f"Could not find project path for {self.project} in {', '.join([str(x) for x in running_file().parents])}"
+        self.working_path = cwd(self.project_path)
         self.running_file = running_file().relative_to(self.working_path)
