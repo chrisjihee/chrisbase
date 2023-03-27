@@ -124,7 +124,10 @@ def to_dataframe(raw, index=None, exclude=None, columns=None, data_exclude=None,
     if dataclasses.is_dataclass(raw):
         if not columns:
             columns = ["key", "value"]
-        return to_dataframe(asdict(raw), index=index, exclude=exclude, columns=columns)
+        raw = {(f"{data_prefix}.{k}" if data_prefix else k): v
+               for k, v in asdict(raw).items()
+               if not data_exclude or k not in data_exclude}
+        return to_dataframe(raw, index=index, exclude=exclude, columns=columns)
     elif isinstance(raw, (list, tuple)):
         if raw and isinstance(raw[0], dict):
             return pd.DataFrame.from_records(raw, index=index, exclude=exclude, columns=columns)
