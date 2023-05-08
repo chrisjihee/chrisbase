@@ -676,10 +676,11 @@ class ProjectEnv(DataClassJsonMixin):
         self.hostname = get_hostname()
         self.hostaddr = get_hostaddr()
         self.python_path = Path(sys.executable)
-        self.project_path = first_or([x for x in running_file().parents if x.name.startswith(self.project)])
-        assert self.project_path, f"Could not find project path for {self.project} in {', '.join([str(x) for x in running_file().parents])}"
+        self.running_file = running_file()
+        self.project_path = first_or([x for x in self.running_file.parents if x.name.startswith(self.project)])
+        assert self.project_path, f"Could not find project path for {self.project} in {', '.join([str(x) for x in self.running_file.parents])}"
         self.working_path = cwd(self.project_path)
-        self.running_file = running_file().relative_to(self.working_path)
+        self.running_file = self.running_file.relative_to(self.working_path)
         if self.running_gpus:
             from chrislab.common.util import cuda_visible_devices
             self.running_gpus = cuda_visible_devices(self.running_gpus)
