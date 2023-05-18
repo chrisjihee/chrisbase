@@ -670,7 +670,7 @@ class ProjectEnv(DataClassJsonMixin):
     working_path: Path = field(init=False)
     running_file: Path = field(init=False)
     running_gpus: str | None = field(default=None)
-    argument_file: Path = field(default="argument.json")
+    argument_file: Path = field(default="arguments.json")
 
     def __post_init__(self):
         assert self.project, "Project name must be provided"
