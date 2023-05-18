@@ -670,6 +670,7 @@ class ProjectEnv(DataClassJsonMixin):
     working_path: Path = field(init=False)
     running_file: Path = field(init=False)
     running_gpus: str | None = field(default=None)
+    argument_file: Path = field(default="argument.json")
 
     def __post_init__(self):
         assert self.project, "Project name must be provided"
@@ -684,3 +685,4 @@ class ProjectEnv(DataClassJsonMixin):
         if self.running_gpus:
             from chrislab.common.util import cuda_visible_devices
             self.running_gpus = cuda_visible_devices(self.running_gpus)
+        self.argument_file = Path(self.argument_file)
