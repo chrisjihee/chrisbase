@@ -114,7 +114,7 @@ def file_table(tabular_data, headers=(), tablefmt="pipe", showindex="default", t
                 not isinstance(showindex, str) and isinstance(showindex, Iterable) and len(showindex) != len(tabular_data):
             if transposed_df:
                 if isinstance(tabular_data.columns, pd.RangeIndex):
-                    headers = ['key'] + list(range(1, len(tabular_data.columns) + 1))
+                    headers = ['key'] + list(map(str(range(1, len(tabular_data.columns) + 1))))
                 else:
                     headers = ['key'] + list(tabular_data.columns)
             else:
