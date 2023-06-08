@@ -671,7 +671,7 @@ class ProjectEnv(DataClassJsonMixin):
     running_file: Path = field(init=False)
     running_gpus: str | None = field(default=None)
     argument_file: Path = field(default="arguments.json")
-    off_debugging: bool = field(default=False)
+    off_debugging: bool = field(default=True)
     on_debugging: bool = field(default=False)
     off_tracing: bool = field(default=False)
     on_tracing: bool = field(default=False)
