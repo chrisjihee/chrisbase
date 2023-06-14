@@ -668,7 +668,7 @@ class ProjectEnv(DataClassJsonMixin):
     hostaddr: str = field(init=False)
     python_path: Path = field(init=False)
     working_path: Path = field(init=False)
-    library_path: str = os.environ['LD_LIBRARY_PATH']
+    library_path: str = os.environ.get("LD_LIBRARY_PATH")
     running_file: Path = field(init=False)
     running_gpus: str | None = field(default=None)
     argument_file: Path = field(default="arguments.json")
