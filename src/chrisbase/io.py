@@ -687,8 +687,12 @@ class ProjectEnv(DataClassJsonMixin):
         assert self.project_path, f"Could not find project path for {self.project} in {', '.join([str(x) for x in self.running_file.parents])}"
         self.working_path = cwd(self.project_path)
         self.running_file = self.running_file.relative_to(self.working_path)
-        if self.running_gpus:
-            from chrislab.common.util import cuda_visible_devices, set_tokenizers_parallelism
-            self.running_gpus = cuda_visible_devices(self.running_gpus)
-            set_tokenizers_parallelism(False)
         self.argument_file = Path(self.argument_file)
+        try:
+            from chrislab.common.util import set_tokenizers_parallelism
+            set_tokenizers_parallelism(False)
+            if self.running_gpus:
+                from chrislab.common.util import cuda_visible_devices
+                self.running_gpus = cuda_visible_devices(self.running_gpus)
+        except ImportError as e:
+            print(f"ImportError: {e}")
