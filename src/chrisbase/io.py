@@ -108,7 +108,7 @@ def err_hr(*args, **kwargs):
     file_hr(*args, file=sys_stderr, **kwargs)
 
 
-def file_table(tabular_data, headers=(), tablefmt="pipe", showindex="default", transposed_df=False, file=sys_stdout, **kwargs):
+def str_table(tabular_data, headers=(), tablefmt="pipe", showindex="default", transposed_df=False, **kwargs):
     if not headers and isinstance(tabular_data, pd.DataFrame):
         if showindex is True or showindex == "default" or showindex == "always" or \
                 not isinstance(showindex, str) and isinstance(showindex, Iterable) and len(showindex) != len(tabular_data):
@@ -122,7 +122,11 @@ def file_table(tabular_data, headers=(), tablefmt="pipe", showindex="default", t
                 showindex = range(1, len(tabular_data) + 1)
         else:
             headers = tabular_data.columns
-    print(tabulate(tabular_data, headers=headers, tablefmt=tablefmt, showindex=showindex, **kwargs), file=file)
+    return tabulate(tabular_data, headers=headers, tablefmt=tablefmt, showindex=showindex, **kwargs)
+
+
+def file_table(*args, file=sys_stdout, **kwargs):
+    print(str_table(*args, **kwargs), file=file)
 
 
 def out_table(*args, **kwargs):
