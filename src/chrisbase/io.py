@@ -668,14 +668,9 @@ class ProjectEnv(DataClassJsonMixin):
     hostaddr: str = field(init=False)
     python_path: Path = field(init=False)
     working_path: Path = field(init=False)
-    library_path: str = os.environ.get("LD_LIBRARY_PATH")
     running_file: Path = field(init=False)
-    running_gpus: str | None = field(default=None)
+    logging_file: Path = field(default="logger.out")
     argument_file: Path = field(default="arguments.json")
-    off_debugging: bool = field(default=False)
-    on_debugging: bool = field(default=False)
-    off_tracing: bool = field(default=False)
-    on_tracing: bool = field(default=False)
 
     def __post_init__(self):
         assert self.project, "Project name must be provided"
@@ -687,12 +682,5 @@ class ProjectEnv(DataClassJsonMixin):
         assert self.project_path, f"Could not find project path for {self.project} in {', '.join([str(x) for x in self.running_file.parents])}"
         self.working_path = cwd(self.project_path)
         self.running_file = self.running_file.relative_to(self.working_path)
+        self.logging_file = Path(self.logging_file)
         self.argument_file = Path(self.argument_file)
-        try:
-            from chrislab.common.util import set_tokenizers_parallelism
-            set_tokenizers_parallelism(False)
-            if self.running_gpus:
-                from chrislab.common.util import cuda_visible_devices
-                self.running_gpus = cuda_visible_devices(self.running_gpus)
-        except ImportError as e:
-            print(f"ImportError: {e}")
