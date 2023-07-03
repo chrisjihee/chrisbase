@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import shutil
 import socket
@@ -6,7 +7,6 @@ import subprocess
 import sys
 import traceback
 import warnings
-from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from itertools import chain
 from logging import getLogger
@@ -17,7 +17,6 @@ from typing import Optional, Iterable
 
 import pandas as pd
 from chrisdict import AttrDict
-from dataclasses_json import DataClassJsonMixin
 from tabulate import tabulate
 
 from chrisbase.time import from_timestamp, now, str_delta
@@ -665,26 +664,25 @@ def environ_to_dataframe(max_value_len=200, columns=None):
                         columns=columns)
 
 
-@dataclass
-class ProjectEnv(DataClassJsonMixin):
-    project: str = field()
-    hostname: str = field(init=False)
-    hostaddr: str = field(init=False)
-    python_path: Path = field(init=False)
-    working_path: Path = field(init=False)
-    running_file: Path = field(init=False)
-    logging_file: Path = field(default="logger.out")
-    argument_file: Path = field(default="arguments.json")
+def make_logger(name="chrislab", stream=sys_stdout, level=logging.INFO, fmt="%(levelname)s\t%(name)s\t%(message)s") -> logging.Logger:
+    stream_handler = logging.StreamHandler(stream=stream)
+    stream_handler.setFormatter(logging.Formatter(fmt=fmt))
+    new_logger = logging.getLogger(name)
+    new_logger.addHandler(stream_handler)
+    new_logger.setLevel(level)
+    return new_logger
 
-    def __post_init__(self):
-        assert self.project, "Project name must be provided"
-        self.hostname = get_hostname()
-        self.hostaddr = get_hostaddr()
-        self.python_path = Path(sys.executable)
-        self.running_file = running_file()
-        self.project_path = first_or([x for x in self.running_file.parents if x.name.startswith(self.project)])
-        assert self.project_path, f"Could not find project path for {self.project} in {', '.join([str(x) for x in self.running_file.parents])}"
-        self.working_path = cwd(self.project_path)
-        self.running_file = self.running_file.relative_to(self.working_path)
-        self.logging_file = Path(self.logging_file)
-        self.argument_file = Path(self.argument_file)
+
+def make_dual_logger(name="chrislab", filepath="running.log", filemode="a",
+                     stream=sys_stdout, level=logging.INFO, fmt="%(levelname)s\t%(name)s\t%(message)s") -> logging.Logger:
+    stream_handler = logging.StreamHandler(stream=stream)
+    file_handler = logging.FileHandler(filename=filepath, mode=filemode, encoding="utf-8")
+
+    stream_handler.setFormatter(logging.Formatter(fmt=fmt))
+    file_handler.setFormatter(logging.Formatter(fmt=fmt))
+
+    new_logger = logging.getLogger(name)
+    new_logger.addHandler(stream_handler)
+    new_logger.addHandler(file_handler)
+    new_logger.setLevel(level)
+    return new_logger
