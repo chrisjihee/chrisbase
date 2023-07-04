@@ -11,7 +11,6 @@ from datetime import datetime, timedelta
 from itertools import chain
 from logging import getLogger
 from pathlib import Path
-from sys import stdout
 from time import sleep
 from typing import Optional, Iterable
 
@@ -19,9 +18,10 @@ import pandas as pd
 from chrisdict import AttrDict
 from tabulate import tabulate
 
-from chrisbase.time import from_timestamp, now, str_delta
+from chrisbase.time import from_timestamp, str_delta
 from chrisbase.util import tupled, SP, NO, OX
 
+logger = logging.getLogger(__name__)
 sys_stdout = sys.stdout
 sys_stderr = sys.stderr
 
@@ -196,7 +196,7 @@ class MuteStd:
 
 class JobTimer:
     def __init__(self, name=None, prefix=None, postfix=None, verbose=False, mt=0, mb=0, pt=0, pb=0, rt=0, rb=0, rc='-',
-                 logger: logging.Logger = None, flush_sec=None, mute_loggers=None, mute_warning=None):
+                 flush_sec=None, mute_loggers=None, mute_warning=None):
         self.name = name
         self.prefix = prefix if prefix and len(prefix) > 0 else None
         self.postfix = postfix if postfix and len(postfix) > 0 else None
@@ -209,9 +209,6 @@ class JobTimer:
         self.rb: int = rb
         self.rc: str = rc
         self.verbose: bool = verbose
-        self.logger = logger if verbose and logger else make_unit_logger(name=logger.name if logger else 'mute',
-                                                                         stream=open(os.devnull, 'w'),
-                                                                         level=logger.level if logger else logging.INFO)
         assert isinstance(mute_loggers, (type(None), str, list, tuple, set))
         assert isinstance(mute_warning, (type(None), str, list, tuple, set))
         self.mute_loggers = tupled(mute_loggers)
@@ -234,23 +231,23 @@ class JobTimer:
             if self.verbose:
                 if self.mt > 0:
                     for _ in range(self.mt):
-                        self.logger.info('')
+                        logger.info('')
                 if self.rt > 0:
                     for _ in range(self.rt):
-                        self.logger.info(hr(c=self.rc))
+                        logger.info(hr(c=self.rc))
                 if self.name:
-                    self.logger.info(f'{self.prefix + SP if self.prefix else NO}[INIT] {self.name}{SP + self.postfix if self.postfix else NO}')
+                    logger.info(f'{self.prefix + SP if self.prefix else NO}[INIT] {self.name}{SP + self.postfix if self.postfix else NO}')
                     if self.rt > 0:
                         for _ in range(self.rt):
-                            self.logger.info(hr(c=self.rc))
+                            logger.info(hr(c=self.rc))
                 if self.pt > 0:
                     for _ in range(self.pt):
-                        self.logger.info('')
+                        logger.info('')
                 flush_or(sys.stdout, sys.stderr, sec=self.flush_sec if self.flush_sec else None)
             self.t1 = datetime.now()
             return self
         except Exception as e:
-            self.logger.error(f"[JobTimer.__enter__()] [{type(e)}] {e}")
+            logger.error(f"[JobTimer.__enter__()] [{type(e)}] {e}")
             exit(11)
 
     def __exit__(self, exc_type=None, exc_val=None, exc_tb=None):
@@ -261,18 +258,18 @@ class JobTimer:
             if self.verbose:
                 if self.pb > 0:
                     for _ in range(self.pb):
-                        self.logger.info('')
+                        logger.info('')
                 if self.rb > 0:
                     for _ in range(self.rb):
-                        self.logger.info(hr(c=self.rc))
+                        logger.info(hr(c=self.rc))
                 if self.name:
-                    self.logger.info(f'{self.prefix + SP if self.prefix else NO}[EXIT] {self.name}{SP + self.postfix if self.postfix else NO} ($={str_delta(self.td)})')
+                    logger.info(f'{self.prefix + SP if self.prefix else NO}[EXIT] {self.name}{SP + self.postfix if self.postfix else NO} ($={str_delta(self.td)})')
                     if self.rb > 0:
                         for _ in range(self.rb):
-                            self.logger.info(hr(c=self.rc))
+                            logger.info(hr(c=self.rc))
                 if self.mb > 0:
                     for _ in range(self.mb):
-                        self.logger.info('')
+                        logger.info('')
                 flush_or(sys.stdout, sys.stderr, sec=self.flush_sec if self.flush_sec else None)
             if self.mute_loggers:
                 for x in self.mute_loggers:
@@ -282,7 +279,7 @@ class JobTimer:
                 for x in self.mute_warning:
                     warnings.filterwarnings('default', category=UserWarning, module=x)
         except Exception as e:
-            self.logger.error(f"[JobTimer.__exit__()] [{type(e)}] {e}")
+            logger.error(f"[JobTimer.__exit__()] [{type(e)}] {e}")
             exit(22)
 
 
@@ -660,27 +657,30 @@ def environ_to_dataframe(max_value_len=200, columns=None):
                         columns=columns)
 
 
-def make_unit_logger(name="chrislab", stream=sys_stdout,
-                     level=logging.INFO, fmt="%(levelname)s\t%(name)s\t%(message)s") -> logging.Logger:
-    stream_handler = logging.StreamHandler(stream=stream)
-    stream_handler.setFormatter(logging.Formatter(fmt=fmt))
-    new_logger = logging.getLogger(name)
-    new_logger.addHandler(stream_handler)
-    new_logger.setLevel(level)
-    return new_logger
+def configure_unit_logger(level=logging.INFO,
+                          stream=sys_stdout,
+                          fmt="%(levelname)s\t%(name)s\t%(message)s", datefmt="[%m.%d %H:%M:%S]"):
+    logging.basicConfig(
+        format=fmt, datefmt=datefmt, level=level, stream=stream, force=True
+    )
 
 
-def make_dual_logger(name="chrislab", filepath="running.log", filemode="a", stream=sys_stdout,
-                     level=logging.INFO, fmt="%(levelname)s\t%(name)s\t%(message)s", datefmt="[%m.%d %H:%M:%S]") -> logging.Logger:
-    stream_handler = logging.StreamHandler(stream=stream)
-    file_handler = logging.FileHandler(filename=filepath, mode=filemode, encoding="utf-8")
+def configure_dual_logger(level=logging.INFO,
+                          stream=sys_stdout, filename="running.log", filemode="a",
+                          fmt="%(levelname)s\t%(name)s\t%(message)s", datefmt="[%m.%d %H:%M:%S]"):
+    handler1 = logging.StreamHandler(stream=stream)
+    handler2 = logging.FileHandler(filename=make_parent_dir(filename), mode=filemode, encoding="utf-8")
 
     formatter = logging.Formatter(fmt=fmt, datefmt=datefmt)
-    stream_handler.setFormatter(formatter)
-    file_handler.setFormatter(formatter)
+    handler1.setFormatter(formatter)
+    handler2.setFormatter(formatter)
 
-    new_logger = logging.getLogger(name)
-    new_logger.addHandler(stream_handler)
-    new_logger.addHandler(file_handler)
-    new_logger.setLevel(level)
-    return new_logger
+    logging.basicConfig(
+        force=True,
+        format=fmt, datefmt=datefmt, level=level,
+        handlers=[
+            handler1,
+            handler2,
+        ],
+
+    )
