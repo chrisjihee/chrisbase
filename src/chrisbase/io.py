@@ -73,6 +73,8 @@ def running_file(known_path: Path or str = None):
 
 
 def hr(c="=", w=137, t=0, b=0):
+    # w=137-26 : %(asctime)s %(levelname)-8s %(message)s
+    # w=137-47 : %(asctime)s %(levelname)-8s %(filename)15s:%(lineno)-4d %(message)s
     # w=137 (for ipynb on Chrome using D2Coding 13pt) with scroll
     # w=139 (for ipynb on Chrome using D2Coding 13pt) without scroll
     # w=165 (for ipynb on GitHub using D2Coding 13pt)
@@ -174,7 +176,7 @@ class MuteStd:
             print(f"[MuteStd.__enter__()] [{type(e)}] {e}", file=sys_stderr)
             exit(11)
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type=None, exc_val=None, exc_tb=None):
         try:
             flush_or(self.stdout, self.stderr, sec=self.flush_sec if self.flush_sec else None)
             if self.mute_logger:
@@ -194,8 +196,7 @@ class MuteStd:
 
 class JobTimer:
     def __init__(self, name=None, prefix=None, postfix=None, verbose=False, mt=0, mb=0, pt=0, pb=0, rt=0, rb=0, rc='-',
-                 file=stdout, flush_sec=None, mute_logger=None, mute_warning=None):
-        self.mute = open(os.devnull, 'w')
+                 logger: logging.Logger = None, flush_sec=None, mute_loggers=None, mute_warning=None):
         self.name = name
         self.prefix = prefix if prefix and len(prefix) > 0 else None
         self.postfix = postfix if postfix and len(postfix) > 0 else None
@@ -207,51 +208,49 @@ class JobTimer:
         self.rt: int = rt
         self.rb: int = rb
         self.rc: str = rc
-        self.file = self.mute if not verbose else file or self.mute
-        self.preout = sys.stdout
-        self.preerr = sys.stderr
-        assert isinstance(mute_logger, (type(None), str, list, tuple, set))
-        assert isinstance(mute_warning, (type(None), str, list, tuple, set))
-        self.mute_logger = tupled(mute_logger)
-        self.mute_warning = tupled(mute_warning)
         self.verbose: bool = verbose
+        self.logger = logger if verbose and logger else make_unit_logger(name=logger.name if logger else 'mute',
+                                                                         stream=open(os.devnull, 'w'),
+                                                                         level=logger.level if logger else logging.INFO)
+        assert isinstance(mute_loggers, (type(None), str, list, tuple, set))
+        assert isinstance(mute_warning, (type(None), str, list, tuple, set))
+        self.mute_loggers = tupled(mute_loggers)
+        self.mute_warning = tupled(mute_warning)
         self.t1: Optional[datetime] = datetime.now()
         self.t2: Optional[datetime] = datetime.now()
         self.td: Optional[timedelta] = self.t2 - self.t1
 
     def __enter__(self):
         try:
-            self.mute_logger = [getLogger(x) for x in self.mute_logger] if self.mute_logger else None
-            if self.mute_logger:
-                for x in self.mute_logger:
+            self.mute_loggers = [getLogger(x) for x in self.mute_loggers] if self.mute_loggers else None
+            if self.mute_loggers:
+                for x in self.mute_loggers:
                     x.disabled = True
                     x.propagate = False
             if self.mute_warning:
                 for x in self.mute_warning:
                     warnings.filterwarnings('ignore', category=UserWarning, module=x)
-            flush_or(self.preout, self.preerr, sec=self.flush_sec if self.flush_sec else None)
-            sys.stdout = self.file
-            sys.stderr = self.file
+            flush_or(sys.stdout, sys.stderr, sec=self.flush_sec if self.flush_sec else None)
             if self.verbose:
                 if self.mt > 0:
                     for _ in range(self.mt):
-                        print(file=self.file)
+                        self.logger.info('')
                 if self.rt > 0:
                     for _ in range(self.rt):
-                        file_hr(c=self.rc, file=self.file)
+                        self.logger.info(hr(c=self.rc))
                 if self.name:
-                    print(f'{now()} {self.prefix + SP if self.prefix else NO}[INIT] {self.name}{SP + self.postfix if self.postfix else NO}', file=self.file)
+                    self.logger.info(f'{self.prefix + SP if self.prefix else NO}[INIT] {self.name}{SP + self.postfix if self.postfix else NO}')
                     if self.rt > 0:
                         for _ in range(self.rt):
-                            file_hr(c=self.rc, file=self.file)
+                            self.logger.info(hr(c=self.rc))
                 if self.pt > 0:
                     for _ in range(self.pt):
-                        print(file=self.file)
+                        self.logger.info('')
                 flush_or(sys.stdout, sys.stderr, sec=self.flush_sec if self.flush_sec else None)
             self.t1 = datetime.now()
             return self
         except Exception as e:
-            print(f"[MyTimer.__enter__()] [{type(e)}] {e}", file=sys_stderr)
+            self.logger.error(f"[JobTimer.__enter__()] [{type(e)}] {e}")
             exit(11)
 
     def __exit__(self, exc_type=None, exc_val=None, exc_tb=None):
@@ -262,31 +261,28 @@ class JobTimer:
             if self.verbose:
                 if self.pb > 0:
                     for _ in range(self.pb):
-                        print(file=self.file)
+                        self.logger.info('')
                 if self.rb > 0:
                     for _ in range(self.rb):
-                        file_hr(c=self.rc, file=self.file)
+                        self.logger.info(hr(c=self.rc))
                 if self.name:
-                    print(f'{now()} {self.prefix + SP if self.prefix else NO}[EXIT] {self.name}{SP + self.postfix if self.postfix else NO} ($={str_delta(self.td)})', file=self.file)
+                    self.logger.info(f'{self.prefix + SP if self.prefix else NO}[EXIT] {self.name}{SP + self.postfix if self.postfix else NO} ($={str_delta(self.td)})')
                     if self.rb > 0:
                         for _ in range(self.rb):
-                            file_hr(c=self.rc, file=self.file)
+                            self.logger.info(hr(c=self.rc))
                 if self.mb > 0:
                     for _ in range(self.mb):
-                        print(file=self.file)
+                        self.logger.info('')
                 flush_or(sys.stdout, sys.stderr, sec=self.flush_sec if self.flush_sec else None)
-            if self.mute_logger:
-                for x in self.mute_logger:
+            if self.mute_loggers:
+                for x in self.mute_loggers:
                     x.disabled = False
                     x.propagate = True
             if self.mute_warning:
                 for x in self.mute_warning:
                     warnings.filterwarnings('default', category=UserWarning, module=x)
-            sys.stdout = self.preout
-            sys.stderr = self.preerr
-            self.mute.close()
         except Exception as e:
-            print(f"[MyTimer.__exit__()] [{type(e)}] {e}", file=sys_stderr)
+            self.logger.error(f"[JobTimer.__exit__()] [{type(e)}] {e}")
             exit(22)
 
 
@@ -664,7 +660,8 @@ def environ_to_dataframe(max_value_len=200, columns=None):
                         columns=columns)
 
 
-def make_logger(name="chrislab", stream=sys_stdout, level=logging.INFO, fmt="%(levelname)s\t%(name)s\t%(message)s") -> logging.Logger:
+def make_unit_logger(name="chrislab", stream=sys_stdout,
+                     level=logging.INFO, fmt="%(levelname)s\t%(name)s\t%(message)s") -> logging.Logger:
     stream_handler = logging.StreamHandler(stream=stream)
     stream_handler.setFormatter(logging.Formatter(fmt=fmt))
     new_logger = logging.getLogger(name)
@@ -673,13 +670,14 @@ def make_logger(name="chrislab", stream=sys_stdout, level=logging.INFO, fmt="%(l
     return new_logger
 
 
-def make_dual_logger(name="chrislab", filepath="running.log", filemode="a",
-                     stream=sys_stdout, level=logging.INFO, fmt="%(levelname)s\t%(name)s\t%(message)s") -> logging.Logger:
+def make_dual_logger(name="chrislab", filepath="running.log", filemode="a", stream=sys_stdout,
+                     level=logging.INFO, fmt="%(levelname)s\t%(name)s\t%(message)s", datefmt="[%m.%d %H:%M:%S]") -> logging.Logger:
     stream_handler = logging.StreamHandler(stream=stream)
     file_handler = logging.FileHandler(filename=filepath, mode=filemode, encoding="utf-8")
 
-    stream_handler.setFormatter(logging.Formatter(fmt=fmt))
-    file_handler.setFormatter(logging.Formatter(fmt=fmt))
+    formatter = logging.Formatter(fmt=fmt, datefmt=datefmt)
+    stream_handler.setFormatter(formatter)
+    file_handler.setFormatter(formatter)
 
     new_logger = logging.getLogger(name)
     new_logger.addHandler(stream_handler)
