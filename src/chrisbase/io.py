@@ -657,30 +657,23 @@ def environ_to_dataframe(max_value_len=200, columns=None):
                         columns=columns)
 
 
-def configure_unit_logger(level=logging.INFO,
-                          stream=sys_stdout,
+def configure_unit_logger(level=logging.INFO, force=True,
+                          stream=sys_stdout, filename=None, filemode="a",
                           fmt="%(levelname)s\t%(name)s\t%(message)s", datefmt="[%m.%d %H:%M:%S]"):
-    logging.basicConfig(
-        format=fmt, datefmt=datefmt, level=level, stream=stream, force=True
-    )
+    if filename and filemode:
+        logging.basicConfig(format=fmt, datefmt=datefmt, level=level, force=force,
+                            filename=make_parent_dir(filename), filemode=filemode, encoding="utf-8")
+    else:
+        logging.basicConfig(format=fmt, datefmt=datefmt, level=level, force=force,
+                            stream=stream)
 
 
-def configure_dual_logger(level=logging.INFO,
+def configure_dual_logger(level=logging.INFO, force=True,
                           stream=sys_stdout, filename="running.log", filemode="a",
                           fmt="%(levelname)s\t%(name)s\t%(message)s", datefmt="[%m.%d %H:%M:%S]"):
-    handler1 = logging.StreamHandler(stream=stream)
-    handler2 = logging.FileHandler(filename=make_parent_dir(filename), mode=filemode, encoding="utf-8")
-
     formatter = logging.Formatter(fmt=fmt, datefmt=datefmt)
+    handler1 = logging.StreamHandler(stream=stream)
     handler1.setFormatter(formatter)
+    handler2 = logging.FileHandler(filename=make_parent_dir(filename), mode=filemode, encoding="utf-8")
     handler2.setFormatter(formatter)
-
-    logging.basicConfig(
-        force=True,
-        format=fmt, datefmt=datefmt, level=level,
-        handlers=[
-            handler1,
-            handler2,
-        ],
-
-    )
+    logging.basicConfig(level=level, force=force, handlers=[handler1, handler2])
