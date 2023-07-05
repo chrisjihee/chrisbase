@@ -659,7 +659,7 @@ def environ_to_dataframe(max_value_len=200, columns=None):
 
 def configure_unit_logger(level=logging.INFO, force=True,
                           stream=sys_stdout, filename=None, filemode="a",
-                          fmt="%(levelname)s\t%(name)s\t%(message)s", datefmt="[%m.%d %H:%M:%S]"):
+                          fmt=logging.BASIC_FORMAT, datefmt="[%m.%d %H:%M:%S]"):
     formatter = logging.Formatter(fmt=fmt, datefmt=datefmt)
     handlers = make_logging_handlers(formatter=formatter, stream=stream, filename=filename, filemode=filemode)[-1:]
     logging.basicConfig(level=level, force=force, handlers=handlers)
@@ -668,7 +668,7 @@ def configure_unit_logger(level=logging.INFO, force=True,
 
 def configure_dual_logger(level=logging.INFO, force=True,
                           stream=sys_stdout, filename="running.log", filemode="a",
-                          fmt="%(levelname)s\t%(name)s\t%(message)s", datefmt="[%m.%d %H:%M:%S]"):
+                          fmt=logging.BASIC_FORMAT, datefmt="[%m.%d %H:%M:%S]"):
     formatter = logging.Formatter(fmt=fmt, datefmt=datefmt)
     handlers = make_logging_handlers(formatter=formatter, stream=stream, filename=filename, filemode=filemode)
     logging.basicConfig(level=level, force=force, handlers=handlers)
