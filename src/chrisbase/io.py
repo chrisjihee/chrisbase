@@ -660,20 +660,41 @@ def environ_to_dataframe(max_value_len=200, columns=None):
 def configure_unit_logger(level=logging.INFO, force=True,
                           stream=sys_stdout, filename=None, filemode="a",
                           fmt="%(levelname)s\t%(name)s\t%(message)s", datefmt="[%m.%d %H:%M:%S]"):
-    if filename and filemode:
-        logging.basicConfig(format=fmt, datefmt=datefmt, level=level, force=force,
-                            filename=make_parent_dir(filename), filemode=filemode, encoding="utf-8")
-    else:
-        logging.basicConfig(format=fmt, datefmt=datefmt, level=level, force=force,
-                            stream=stream)
+    formatter = logging.Formatter(fmt=fmt, datefmt=datefmt)
+    handlers = make_logging_handlers(formatter=formatter, stream=stream, filename=filename, filemode=filemode)[-1:]
+    logging.basicConfig(level=level, force=force, handlers=handlers)
+    update_all_handlers(handlers=handlers)
 
 
 def configure_dual_logger(level=logging.INFO, force=True,
                           stream=sys_stdout, filename="running.log", filemode="a",
                           fmt="%(levelname)s\t%(name)s\t%(message)s", datefmt="[%m.%d %H:%M:%S]"):
     formatter = logging.Formatter(fmt=fmt, datefmt=datefmt)
-    handler1 = logging.StreamHandler(stream=stream)
-    handler1.setFormatter(formatter)
-    handler2 = logging.FileHandler(filename=make_parent_dir(filename), mode=filemode, encoding="utf-8")
-    handler2.setFormatter(formatter)
-    logging.basicConfig(level=level, force=force, handlers=[handler1, handler2])
+    handlers = make_logging_handlers(formatter=formatter, stream=stream, filename=filename, filemode=filemode)
+    logging.basicConfig(level=level, force=force, handlers=handlers)
+    update_all_handlers(handlers=handlers)
+
+
+def make_logging_handlers(formatter, stream, filename, filemode):
+    handlers = []
+    if stream:
+        h = logging.StreamHandler(stream=stream)
+        h.setFormatter(formatter)
+        handlers.append(h)
+    if filename and filemode:
+        h = logging.FileHandler(filename=make_parent_dir(filename), mode=filemode, encoding="utf-8")
+        h.setFormatter(formatter)
+        handlers.append(h)
+    assert len(handlers) > 0, f"Empty handlers: filename={filename}, filemode={filemode}, stream={stream}"
+    return handlers
+
+
+def update_all_handlers(handlers):
+    for x in logging.Logger.manager.loggerDict.values():
+        if isinstance(x, logging.Logger):
+            if len(x.handlers) > 0:
+                for h in x.handlers:
+                    x.removeHandler(h)
+                for h in handlers:
+                    x.addHandler(h)
+                logger.debug(f"logging.getLogger({x.name:<20s}) = Logger(level={x.level}, handlers={x.handlers}, disabled={x.disabled}, propagate={x.propagate}, parent={x.parent})")
