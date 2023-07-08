@@ -27,8 +27,8 @@ sys_stderr = sys.stderr
 
 
 class LoggingFormat:
-    REALIZING: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-8s', '%(name)48s', '%(message)s'])
-    DEBUGGING: str = ' ┇ '.join(['%(pathname)120s:%(lineno)-5d', '%(asctime)s', '%(levelname)-8s', '%(message)s'])
+    CHECK: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-8s', '%(name)48s', '%(message)s'])
+    DEBUG: str = ' ┇ '.join(['%(pathname)120s:%(lineno)-5d', '%(asctime)s', '%(levelname)-8s', '%(name)48s', '%(message)s'])
 
 
 def cwd(path=None) -> Path:
