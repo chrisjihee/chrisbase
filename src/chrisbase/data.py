@@ -1,13 +1,17 @@
 import logging
 import sys
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
+import pandas as pd
 import typer
 from dataclasses_json import DataClassJsonMixin
 
-from chrisbase.io import get_hostname, get_hostaddr, running_file, first_or, cwd, configure_dual_logger, configure_unit_logger
+from chrisbase.io import get_hostname, get_hostaddr, running_file, first_or, cwd, configure_dual_logger, configure_unit_logger, make_parent_dir, str_table, hr
+from chrisbase.time import now, str_delta
+from chrisbase.util import to_dataframe
 
 
 class AppTyper(typer.Typer):
@@ -24,6 +28,26 @@ class TypedData(DataClassJsonMixin):
 
     def __post_init__(self):
         self.data_type = self.__class__.__name__
+
+
+@dataclass
+class OptionData(TypedData):
+    def __post_init__(self):
+        super().__post_init__()
+
+
+@dataclass
+class ResultData(TypedData):
+    def __post_init__(self):
+        super().__post_init__()
+
+
+@dataclass
+class ArgumentGroupData(TypedData):
+    tag = None
+
+    def __post_init__(self):
+        super().__post_init__()
 
 
 @dataclass
@@ -73,3 +97,64 @@ class ProjectEnv(TypedData):
         else:
             configure_unit_logger(level=self.msg_level, fmt=self.msg_format, datefmt=self.date_format,
                                   stream=sys.stdout)
+
+
+@dataclass
+class TimeChecker(ResultData):
+    t1 = datetime.now()
+    t2 = datetime.now()
+    started: str | None = field(default=None)
+    settled: str | None = field(default=None)
+    elapsed: str | None = field(default=None)
+
+    def set_started(self):
+        self.started = now()
+        self.settled = None
+        self.elapsed = None
+        self.t1 = datetime.now()
+        return self
+
+    def set_settled(self):
+        self.t2 = datetime.now()
+        self.settled = now()
+        self.elapsed = str_delta(self.t2 - self.t1)
+        return self
+
+
+@dataclass
+class CommonArguments(ArgumentGroupData):
+    tag = "common"
+    env: ProjectEnv = field()
+    time: TimeChecker = field(default=TimeChecker())
+
+    def __post_init__(self):
+        super().__post_init__()
+        if not self.env.logging_file.stem.endswith(self.tag):
+            self.env.logging_file = self.env.logging_file.with_stem(f"{self.env.logging_file.stem}-{self.tag}")
+        if not self.env.argument_file.stem.endswith(self.tag):
+            self.env.argument_file = self.env.argument_file.with_stem(f"{self.env.argument_file.stem}-{self.tag}")
+        self.env.output_home = self.env.output_home or Path("output")
+        configure_dual_logger(level=self.env.msg_level, fmt=self.env.msg_format, datefmt=self.env.date_format,
+                              filename=self.env.output_home / self.env.logging_file)
+
+    def save_arguments(self, to: Path | str = None) -> Path | None:
+        if not self.env.output_home:
+            return None
+        args_file = to if to else self.env.output_home / self.env.argument_file
+        args_json = self.to_json(default=str, ensure_ascii=False, indent=2)
+        make_parent_dir(args_file).write_text(args_json, encoding="utf-8")
+        return args_file
+
+    def info_arguments(self, logger):
+        table = str_table(self.dataframe(), tablefmt="presto")  # "plain", "presto"
+        for line in table.splitlines() + [hr(c='-')]:
+            logger.info(line)
+        return self
+
+    def dataframe(self, columns=None) -> pd.DataFrame:
+        if not columns:
+            columns = [self.data_type, "value"]
+        return pd.concat([
+            to_dataframe(columns=columns, raw=self.env, data_prefix="env"),
+            to_dataframe(columns=columns, raw=self.time, data_prefix="time"),
+        ]).reset_index(drop=True)
