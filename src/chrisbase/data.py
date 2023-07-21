@@ -4,10 +4,19 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List
 
+import typer
 from dataclasses_json import DataClassJsonMixin
 from pytorch_lightning.loggers import CSVLogger
 
 from chrisbase.io import get_hostname, get_hostaddr, running_file, first_or, cwd, configure_dual_logger, configure_unit_logger
+
+
+class AppTyper(typer.Typer):
+    def __init__(self):
+        super().__init__(
+            add_completion=False,
+            pretty_exceptions_enable=False,
+        )
 
 
 @dataclass
