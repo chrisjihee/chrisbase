@@ -70,8 +70,8 @@ class ProjectEnv(TypedData):
     try:
         import pytorch_lightning.loggers
         csv_logger: Optional[pytorch_lightning.loggers.CSVLogger] = field(init=False, default=None)
-    except:
-        print("pytorch_lightning.loggers.CSVLogger is not available")
+    except ImportError as e:
+        print(f"pytorch_lightning.loggers.CSVLogger is not available: {e.msg}")
 
     def set(self, name: str = None):
         self.job_name = name
