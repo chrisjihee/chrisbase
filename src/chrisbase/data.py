@@ -2,11 +2,10 @@ import logging
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import typer
 from dataclasses_json import DataClassJsonMixin
-from pytorch_lightning.loggers import CSVLogger
 
 from chrisbase.io import get_hostname, get_hostaddr, running_file, first_or, cwd, configure_dual_logger, configure_unit_logger
 
@@ -44,7 +43,11 @@ class ProjectEnv(TypedData):
     msg_level: int = field(default=logging.INFO)
     msg_format: str = field(default=logging.BASIC_FORMAT)
     date_format: str = field(default="[%m.%d %H:%M:%S]")
-    csv_logger: CSVLogger | None = field(init=False, default=None)
+    try:
+        import pytorch_lightning.loggers
+        csv_logger: Optional[pytorch_lightning.loggers.CSVLogger] = field(init=False, default=None)
+    except:
+        print("pytorch_lightning.loggers.CSVLogger is not available")
 
     def set(self, name: str = None):
         self.job_name = name
