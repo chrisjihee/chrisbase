@@ -157,6 +157,20 @@ class CommonArguments(ArgumentGroupData):
         ]).reset_index(drop=True)
 
 
+class ArgumentsUsing:
+    def __init__(self, args: CommonArguments, delete_on_exit: bool = True):
+        self.args: CommonArguments = args
+        self.delete_on_exit: bool = delete_on_exit
+
+    def __enter__(self) -> Path:
+        self.args_file: Path | None = self.args.save_arguments()
+        return self.args_file
+
+    def __exit__(self, *exc_info):
+        if self.delete_on_exit and self.args_file:
+            self.args_file.unlink(missing_ok=True)
+
+
 class RuntimeChecking:
     def __init__(self, args: CommonArguments):
         self.args: CommonArguments = args
@@ -166,4 +180,4 @@ class RuntimeChecking:
 
     def __exit__(self, *exc_info):
         self.args.time.set_settled()
-        self.args.save_arguments(self.args.env.output_home / self.args.env.argument_file)
+        self.args.save_arguments()
