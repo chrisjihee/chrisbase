@@ -27,10 +27,12 @@ sys_stderr = sys.stderr
 
 
 class LoggingFormat:
-    CHECK: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-8s', '%(name)48s', '%(message)s'])
-    DEBUG: str = ' ┇ '.join(['%(pathname)120s:%(lineno)-5d', '%(asctime)s', '%(levelname)-8s', '%(name)48s', '%(message)s'])
-    DEBUG_90: str = ' ┇ '.join(['%(pathname)90s:%(lineno)-5d', '%(asctime)s', '%(levelname)-8s', '%(name)36s', '%(message)s'])
-    DEBUG_60: str = ' ┇ '.join(['%(pathname)60s:%(lineno)-5d', '%(asctime)s', '%(levelname)-8s', '%(name)24s', '%(message)s'])
+    CHECK_48: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-8s', '%(name)48s', '%(message)s'])
+    CHECK_36: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-8s', '%(name)36s', '%(message)s'])
+    CHECK_24: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-8s', '%(name)24s', '%(message)s'])
+    DEBUG_48: str = ' ┇ '.join(['%(pathname)120s:%(lineno)-5d', '%(asctime)s', '%(levelname)-8s', '%(name)48s', '%(message)s'])
+    DEBUG_36: str = ' ┇ '.join(['%(pathname)90s:%(lineno)-5d', '%(asctime)s', '%(levelname)-8s', '%(name)36s', '%(message)s'])
+    DEBUG_24: str = ' ┇ '.join(['%(pathname)60s:%(lineno)-5d', '%(asctime)s', '%(levelname)-8s', '%(name)24s', '%(message)s'])
 
 
 def cwd(path=None) -> Path:

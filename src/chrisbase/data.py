@@ -3,13 +3,13 @@ import sys
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 import pandas as pd
 import typer
 from dataclasses_json import DataClassJsonMixin
 
-from chrisbase.io import get_hostname, get_hostaddr, running_file, first_or, cwd, configure_dual_logger, configure_unit_logger, make_parent_dir, str_table, hr, LoggingFormat
+from chrisbase.io import get_hostname, get_hostaddr, running_file, first_or, cwd, configure_dual_logger, configure_unit_logger, make_parent_dir, str_table, hr
 from chrisbase.time import now, str_delta
 from chrisbase.util import to_dataframe
 
@@ -69,11 +69,6 @@ class ProjectEnv(TypedData):
     msg_level: int = field(default=logging.INFO)
     msg_format: str = field(default=logging.BASIC_FORMAT)
     date_format: str = field(default="[%m.%d %H:%M:%S]")
-    try:
-        import pytorch_lightning.loggers
-        csv_logger: Optional[pytorch_lightning.loggers.CSVLogger] = field(init=False, default=None)
-    except ImportError as e:
-        print(f"pytorch_lightning.loggers.CSVLogger is not available: {e.msg}")
 
     def set(self, name: str = None):
         self.job_name = name
@@ -125,16 +120,16 @@ class TimeChecker(ResultData):
 
 @dataclass
 class CommonArguments(ArgumentGroupData):
-    tag = "common"
+    tag = None
     env: ProjectEnv = field()
     time: TimeChecker = field(default=TimeChecker())
 
     def __post_init__(self):
         super().__post_init__()
-        if not self.env.logging_file.stem.endswith(self.tag):
-            self.env.logging_file = self.env.logging_file.with_stem(f"{self.env.logging_file.stem}-{self.tag}")
-        if not self.env.argument_file.stem.endswith(self.tag):
+        if self.tag and not self.env.argument_file.stem.endswith(self.tag):
             self.env.argument_file = self.env.argument_file.with_stem(f"{self.env.argument_file.stem}-{self.tag}")
+        if self.tag and not self.env.logging_file.stem.endswith(self.tag):
+            self.env.logging_file = self.env.logging_file.with_stem(f"{self.env.logging_file.stem}-{self.tag}")
         self.env.output_home = self.env.output_home or Path("output")
         configure_dual_logger(level=self.env.msg_level, fmt=self.env.msg_format, datefmt=self.env.date_format,
                               filename=self.env.output_home / self.env.logging_file)
