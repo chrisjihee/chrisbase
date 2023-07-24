@@ -155,3 +155,15 @@ class CommonArguments(ArgumentGroupData):
             to_dataframe(columns=columns, raw=self.env, data_prefix="env"),
             to_dataframe(columns=columns, raw=self.time, data_prefix="time"),
         ]).reset_index(drop=True)
+
+
+class RuntimeChecking:
+    def __init__(self, args: CommonArguments):
+        self.args: CommonArguments = args
+
+    def __enter__(self):
+        self.args.time.set_started()
+
+    def __exit__(self, *exc_info):
+        self.args.time.set_settled()
+        self.args.save_arguments(self.args.env.output_home / self.args.env.argument_file)
