@@ -9,9 +9,11 @@ import pandas as pd
 import typer
 from dataclasses_json import DataClassJsonMixin
 
-from chrisbase.io import get_hostname, get_hostaddr, running_file, first_or, cwd, configure_dual_logger, configure_unit_logger, make_parent_dir, str_table, hr
+from chrisbase.io import get_hostname, get_hostaddr, running_file, first_or, cwd, configure_dual_logger, configure_unit_logger, make_parent_dir, str_table, hr, LoggingFormat
 from chrisbase.time import now, str_delta
 from chrisbase.util import to_dataframe
+
+logger = logging.getLogger(__name__)
 
 
 class AppTyper(typer.Typer):
@@ -145,7 +147,7 @@ class CommonArguments(ArgumentGroupData):
         make_parent_dir(args_file).write_text(args_json, encoding="utf-8")
         return args_file
 
-    def info_arguments(self, logger):
+    def info_arguments(self):
         table = str_table(self.dataframe(), tablefmt="presto")  # "plain", "presto"
         for line in table.splitlines() + [hr(c='-')]:
             logger.info(line)

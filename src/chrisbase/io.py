@@ -29,6 +29,8 @@ sys_stderr = sys.stderr
 class LoggingFormat:
     CHECK: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-8s', '%(name)48s', '%(message)s'])
     DEBUG: str = ' ┇ '.join(['%(pathname)120s:%(lineno)-5d', '%(asctime)s', '%(levelname)-8s', '%(name)48s', '%(message)s'])
+    DEBUG_90: str = ' ┇ '.join(['%(pathname)90s:%(lineno)-5d', '%(asctime)s', '%(levelname)-8s', '%(name)36s', '%(message)s'])
+    DEBUG_60: str = ' ┇ '.join(['%(pathname)60s:%(lineno)-5d', '%(asctime)s', '%(levelname)-8s', '%(name)24s', '%(message)s'])
 
 
 def cwd(path=None) -> Path:
@@ -696,7 +698,7 @@ def make_logging_handlers(formatter, stream, filename, filemode, existing_conten
     return handlers
 
 
-def update_existing_handlers(handlers):
+def update_existing_handlers(handlers, debug=False):
     for x in logging.Logger.manager.loggerDict.values():
         if isinstance(x, logging.Logger):
             if len(x.handlers) > 0:
@@ -706,4 +708,5 @@ def update_existing_handlers(handlers):
                     x.removeHandler(h)
                 for h in handlers:
                     x.addHandler(h)
-                logger.debug(f"logging.getLogger({x.name:<20s}) = Logger(level={x.level}, handlers={x.handlers}, disabled={x.disabled}, propagate={x.propagate}, parent={x.parent})")
+                if debug:
+                    logger.debug(f"logging.getLogger({x.name:<20s}) = Logger(level={x.level}, handlers={x.handlers}, disabled={x.disabled}, propagate={x.propagate}, parent={x.parent})")
