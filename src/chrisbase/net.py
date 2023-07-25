@@ -1,8 +1,11 @@
 import json
+import logging
 from ipaddress import IPv4Address
 
 import httpx
 import netifaces
+
+logger = logging.getLogger(__name__)
 
 
 def local_ip_addrs():
@@ -28,7 +31,7 @@ def check_ip_addrs():
                 'elapsed': res.elapsed.total_seconds() * 1000,
                 'size': res.num_bytes_downloaded / 1024
             }
-            print("  * " + ' ----> '.join(map(lambda x: f"[{x}]", [
+            logger.info("  * " + ' ----> '.join(map(lambda x: f"[{x}]", [
                 f"{response['source']:<7s}",
                 f"{response['status']}",
                 f"{response['elapsed']:7,.0f}ms",

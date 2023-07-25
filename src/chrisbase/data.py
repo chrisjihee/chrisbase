@@ -1,17 +1,20 @@
 import logging
 import sys
+import warnings
 from dataclasses import dataclass, field
 from datetime import datetime
+from datetime import timedelta
 from pathlib import Path
 from typing import List
+from typing import Optional
 
 import pandas as pd
 import typer
 from dataclasses_json import DataClassJsonMixin
 
-from chrisbase.io import get_hostname, get_hostaddr, running_file, first_or, cwd, configure_dual_logger, configure_unit_logger, make_parent_dir, str_table, hr
+from chrisbase.io import get_hostname, get_hostaddr, running_file, first_or, cwd, hr, str_table, flush_or, make_parent_dir, configure_dual_logger, configure_unit_logger
 from chrisbase.time import now, str_delta
-from chrisbase.util import to_dataframe
+from chrisbase.util import tupled, SP, NO, to_dataframe
 
 logger = logging.getLogger(__name__)
 
@@ -157,7 +160,20 @@ class CommonArguments(ArgumentGroupData):
         ]).reset_index(drop=True)
 
 
-class ArgumentsUsing:
+class RuntimeChecking:
+    def __init__(self, args: CommonArguments):
+        self.args: CommonArguments = args
+
+    def __enter__(self):
+        self.args.time.set_started()
+        self.args.save_arguments()
+
+    def __exit__(self, *exc_info):
+        self.args.time.set_settled()
+        self.args.save_arguments()
+
+
+class ArgumentsUsing:  # TODO: Remove someday!
     def __init__(self, args: CommonArguments, delete_on_exit: bool = True):
         self.args: CommonArguments = args
         self.delete_on_exit: bool = delete_on_exit
@@ -171,13 +187,98 @@ class ArgumentsUsing:
             self.args_file.unlink(missing_ok=True)
 
 
-class RuntimeChecking:
-    def __init__(self, args: CommonArguments):
-        self.args: CommonArguments = args
+class JobTimer:
+    def __init__(self, name=None, args: CommonArguments = None, prefix=None, postfix=None,
+                 verbose=False, mt=0, mb=0, pt=0, pb=0, rt=0, rb=0, rc='-',
+                 flush_sec=None, mute_loggers=None, mute_warning=None):
+        self.name = name
+        self.args = args
+        self.prefix = prefix if prefix and len(prefix) > 0 else None
+        self.postfix = postfix if postfix and len(postfix) > 0 else None
+        self.flush_sec = flush_sec
+        self.mt: int = mt
+        self.mb: int = mb
+        self.pt: int = pt
+        self.pb: int = pb
+        self.rt: int = rt
+        self.rb: int = rb
+        self.rc: str = rc
+        self.verbose: bool = verbose
+        assert isinstance(mute_loggers, (type(None), str, list, tuple, set))
+        assert isinstance(mute_warning, (type(None), str, list, tuple, set))
+        self.mute_loggers = tupled(mute_loggers)
+        self.mute_warning = tupled(mute_warning)
+        self.t1: Optional[datetime] = datetime.now()
+        self.t2: Optional[datetime] = datetime.now()
+        self.td: Optional[timedelta] = self.t2 - self.t1
 
     def __enter__(self):
-        self.args.time.set_started()
+        try:
+            self.mute_loggers = [logging.getLogger(x) for x in self.mute_loggers] if self.mute_loggers else None
+            if self.mute_loggers:
+                for x in self.mute_loggers:
+                    x.disabled = True
+                    x.propagate = False
+            if self.mute_warning:
+                for x in self.mute_warning:
+                    warnings.filterwarnings('ignore', category=UserWarning, module=x)
+            flush_or(sys.stdout, sys.stderr, sec=self.flush_sec if self.flush_sec else None)
+            if self.verbose:
+                if self.mt > 0:
+                    for _ in range(self.mt):
+                        logger.info('')
+                if self.rt > 0:
+                    for _ in range(self.rt):
+                        logger.info(hr(c=self.rc))
+                if self.name:
+                    logger.info(f'{self.prefix + SP if self.prefix else NO}[INIT] {self.name}{SP + self.postfix if self.postfix else NO}')
+                    if self.rt > 0:
+                        for _ in range(self.rt):
+                            logger.info(hr(c=self.rc))
+                if self.pt > 0:
+                    for _ in range(self.pt):
+                        logger.info('')
+                flush_or(sys.stdout, sys.stderr, sec=self.flush_sec if self.flush_sec else None)
+            if self.args:
+                self.args.time.set_started()
+                self.args.save_arguments()
+            self.t1 = datetime.now()
+            return self
+        except Exception as e:
+            logger.error(f"[JobTimer.__enter__()] [{type(e)}] {e}")
+            exit(11)
 
-    def __exit__(self, *exc_info):
-        self.args.time.set_settled()
-        self.args.save_arguments()
+    def __exit__(self, exc_type=None, exc_val=None, exc_tb=None):
+        try:
+            if self.args:
+                self.args.time.set_settled()
+                self.args.save_arguments()
+            self.t2 = datetime.now()
+            self.td = self.t2 - self.t1
+            flush_or(sys.stdout, sys.stderr, sec=self.flush_sec if self.flush_sec else None)
+            if self.verbose:
+                if self.pb > 0:
+                    for _ in range(self.pb):
+                        logger.info('')
+                if self.rb > 0:
+                    for _ in range(self.rb):
+                        logger.info(hr(c=self.rc))
+                if self.name:
+                    logger.info(f'{self.prefix + SP if self.prefix else NO}[EXIT] {self.name}{SP + self.postfix if self.postfix else NO} ($={str_delta(self.td)})')
+                    if self.rb > 0:
+                        for _ in range(self.rb):
+                            logger.info(hr(c=self.rc))
+                if self.mb > 0:
+                    for _ in range(self.mb):
+                        logger.info('')
+                flush_or(sys.stdout, sys.stderr, sec=self.flush_sec if self.flush_sec else None)
+            if self.mute_loggers:
+                for x in self.mute_loggers:
+                    x.disabled = False
+                    x.propagate = True
+            if self.mute_warning:
+                for x in self.mute_warning:
+                    warnings.filterwarnings('default', category=UserWarning, module=x)
+        except Exception as e:
+            logger.error(f"[JobTimer.__exit__()] [{type(e)}] {e}")
+            exit(22)

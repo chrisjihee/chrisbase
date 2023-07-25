@@ -7,19 +7,17 @@ import subprocess
 import sys
 import traceback
 import warnings
-from datetime import datetime, timedelta
 from itertools import chain
-from logging import getLogger
 from pathlib import Path
 from time import sleep
-from typing import Optional, Iterable
+from typing import Iterable
 
 import pandas as pd
 from chrisdict import AttrDict
 from tabulate import tabulate
 
-from chrisbase.time import from_timestamp, str_delta
-from chrisbase.util import tupled, SP, NO, OX
+from chrisbase.time import from_timestamp
+from chrisbase.util import tupled, NO, OX
 
 logger = logging.getLogger(__name__)
 sys_stdout = sys.stdout
@@ -33,6 +31,54 @@ class LoggingFormat:
     DEBUG_48: str = ' ┇ '.join(['%(pathname)120s:%(lineno)-5d', '%(asctime)s', '%(levelname)-8s', '%(name)48s', '%(message)s'])
     DEBUG_36: str = ' ┇ '.join(['%(pathname)90s:%(lineno)-5d', '%(asctime)s', '%(levelname)-8s', '%(name)36s', '%(message)s'])
     DEBUG_24: str = ' ┇ '.join(['%(pathname)60s:%(lineno)-5d', '%(asctime)s', '%(levelname)-8s', '%(name)24s', '%(message)s'])
+
+
+class MuteStd:
+    def __init__(self, out=None, err=None, flush_sec=0.0, mute_warning=None, mute_logger=None):
+        self.mute = open(os.devnull, 'w')
+        self.stdout = out or self.mute
+        self.stderr = err or self.mute
+        self.preout = sys.stdout
+        self.preerr = sys.stderr
+        self.flush_sec = flush_sec
+        assert isinstance(mute_logger, (type(None), str, list, tuple, set))
+        assert isinstance(mute_warning, (type(None), str, list, tuple, set))
+        self.mute_logger = tupled(mute_logger)
+        self.mute_warning = tupled(mute_warning)
+
+    def __enter__(self):
+        try:
+            self.mute_logger = [logging.getLogger(x) for x in self.mute_logger] if self.mute_logger else None
+            if self.mute_logger:
+                for x in self.mute_logger:
+                    x.disabled = True
+                    x.propagate = False
+            if self.mute_warning:
+                for x in self.mute_warning:
+                    warnings.filterwarnings('ignore', category=UserWarning, module=x)
+            flush_or(self.preout, self.preerr, sec=self.flush_sec if self.flush_sec else None)
+            sys.stdout = self.stdout
+            sys.stderr = self.stderr
+        except Exception as e:
+            print(f"[MuteStd.__enter__()] [{type(e)}] {e}", file=sys_stderr)
+            exit(11)
+
+    def __exit__(self, exc_type=None, exc_val=None, exc_tb=None):
+        try:
+            flush_or(self.stdout, self.stderr, sec=self.flush_sec if self.flush_sec else None)
+            if self.mute_logger:
+                for x in self.mute_logger:
+                    x.disabled = False
+                    x.propagate = True
+            if self.mute_warning:
+                for x in self.mute_warning:
+                    warnings.filterwarnings('default', category=UserWarning, module=x)
+            sys.stdout = self.preout
+            sys.stderr = self.preerr
+            self.mute.close()
+        except Exception as e:
+            print(f"[MuteStd.__exit__()] [{type(e)}] {e}", file=sys_stderr)
+            exit(22)
 
 
 def cwd(path=None) -> Path:
@@ -153,143 +199,6 @@ def flush_or(*outs, sec):
             out.flush()
             if sec and sec > 0.001:
                 sleep(sec)
-
-
-class MuteStd:
-    def __init__(self, out=None, err=None, flush_sec=0.0, mute_warning=None, mute_logger=None):
-        self.mute = open(os.devnull, 'w')
-        self.stdout = out or self.mute
-        self.stderr = err or self.mute
-        self.preout = sys.stdout
-        self.preerr = sys.stderr
-        self.flush_sec = flush_sec
-        assert isinstance(mute_logger, (type(None), str, list, tuple, set))
-        assert isinstance(mute_warning, (type(None), str, list, tuple, set))
-        self.mute_logger = tupled(mute_logger)
-        self.mute_warning = tupled(mute_warning)
-
-    def __enter__(self):
-        try:
-            self.mute_logger = [getLogger(x) for x in self.mute_logger] if self.mute_logger else None
-            if self.mute_logger:
-                for x in self.mute_logger:
-                    x.disabled = True
-                    x.propagate = False
-            if self.mute_warning:
-                for x in self.mute_warning:
-                    warnings.filterwarnings('ignore', category=UserWarning, module=x)
-            flush_or(self.preout, self.preerr, sec=self.flush_sec if self.flush_sec else None)
-            sys.stdout = self.stdout
-            sys.stderr = self.stderr
-        except Exception as e:
-            print(f"[MuteStd.__enter__()] [{type(e)}] {e}", file=sys_stderr)
-            exit(11)
-
-    def __exit__(self, exc_type=None, exc_val=None, exc_tb=None):
-        try:
-            flush_or(self.stdout, self.stderr, sec=self.flush_sec if self.flush_sec else None)
-            if self.mute_logger:
-                for x in self.mute_logger:
-                    x.disabled = False
-                    x.propagate = True
-            if self.mute_warning:
-                for x in self.mute_warning:
-                    warnings.filterwarnings('default', category=UserWarning, module=x)
-            sys.stdout = self.preout
-            sys.stderr = self.preerr
-            self.mute.close()
-        except Exception as e:
-            print(f"[MuteStd.__exit__()] [{type(e)}] {e}", file=sys_stderr)
-            exit(22)
-
-
-class JobTimer:
-    def __init__(self, name=None, prefix=None, postfix=None, verbose=False, mt=0, mb=0, pt=0, pb=0, rt=0, rb=0, rc='-',
-                 flush_sec=None, mute_loggers=None, mute_warning=None):
-        self.name = name
-        self.prefix = prefix if prefix and len(prefix) > 0 else None
-        self.postfix = postfix if postfix and len(postfix) > 0 else None
-        self.flush_sec = flush_sec
-        self.mt: int = mt
-        self.mb: int = mb
-        self.pt: int = pt
-        self.pb: int = pb
-        self.rt: int = rt
-        self.rb: int = rb
-        self.rc: str = rc
-        self.verbose: bool = verbose
-        assert isinstance(mute_loggers, (type(None), str, list, tuple, set))
-        assert isinstance(mute_warning, (type(None), str, list, tuple, set))
-        self.mute_loggers = tupled(mute_loggers)
-        self.mute_warning = tupled(mute_warning)
-        self.t1: Optional[datetime] = datetime.now()
-        self.t2: Optional[datetime] = datetime.now()
-        self.td: Optional[timedelta] = self.t2 - self.t1
-
-    def __enter__(self):
-        try:
-            self.mute_loggers = [getLogger(x) for x in self.mute_loggers] if self.mute_loggers else None
-            if self.mute_loggers:
-                for x in self.mute_loggers:
-                    x.disabled = True
-                    x.propagate = False
-            if self.mute_warning:
-                for x in self.mute_warning:
-                    warnings.filterwarnings('ignore', category=UserWarning, module=x)
-            flush_or(sys.stdout, sys.stderr, sec=self.flush_sec if self.flush_sec else None)
-            if self.verbose:
-                if self.mt > 0:
-                    for _ in range(self.mt):
-                        logger.info('')
-                if self.rt > 0:
-                    for _ in range(self.rt):
-                        logger.info(hr(c=self.rc))
-                if self.name:
-                    logger.info(f'{self.prefix + SP if self.prefix else NO}[INIT] {self.name}{SP + self.postfix if self.postfix else NO}')
-                    if self.rt > 0:
-                        for _ in range(self.rt):
-                            logger.info(hr(c=self.rc))
-                if self.pt > 0:
-                    for _ in range(self.pt):
-                        logger.info('')
-                flush_or(sys.stdout, sys.stderr, sec=self.flush_sec if self.flush_sec else None)
-            self.t1 = datetime.now()
-            return self
-        except Exception as e:
-            logger.error(f"[JobTimer.__enter__()] [{type(e)}] {e}")
-            exit(11)
-
-    def __exit__(self, exc_type=None, exc_val=None, exc_tb=None):
-        try:
-            self.t2 = datetime.now()
-            self.td = self.t2 - self.t1
-            flush_or(sys.stdout, sys.stderr, sec=self.flush_sec if self.flush_sec else None)
-            if self.verbose:
-                if self.pb > 0:
-                    for _ in range(self.pb):
-                        logger.info('')
-                if self.rb > 0:
-                    for _ in range(self.rb):
-                        logger.info(hr(c=self.rc))
-                if self.name:
-                    logger.info(f'{self.prefix + SP if self.prefix else NO}[EXIT] {self.name}{SP + self.postfix if self.postfix else NO} ($={str_delta(self.td)})')
-                    if self.rb > 0:
-                        for _ in range(self.rb):
-                            logger.info(hr(c=self.rc))
-                if self.mb > 0:
-                    for _ in range(self.mb):
-                        logger.info('')
-                flush_or(sys.stdout, sys.stderr, sec=self.flush_sec if self.flush_sec else None)
-            if self.mute_loggers:
-                for x in self.mute_loggers:
-                    x.disabled = False
-                    x.propagate = True
-            if self.mute_warning:
-                for x in self.mute_warning:
-                    warnings.filterwarnings('default', category=UserWarning, module=x)
-        except Exception as e:
-            logger.error(f"[JobTimer.__exit__()] [{type(e)}] {e}")
-            exit(22)
 
 
 def exists_or(path):
@@ -598,6 +507,7 @@ def save_rows(rows, file, open_mode='w', keys=None, excl=None, with_column_name=
 
 
 def run_command(*args, title=None, mt=0, mb=0, pt=0, pb=0, rt=0, rb=0, rc='-', bare=True, verbose=True, real=True):
+    from chrisbase.data import JobTimer
     with JobTimer(name=None if bare else f"run_command({title})" if title else f"run_command{args}",
                   verbose=verbose, mt=mt, mb=mb, pt=pt, pb=pb, rt=rt, rb=rb, rc=rc) as scope:
         if real:
