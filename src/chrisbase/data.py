@@ -137,7 +137,7 @@ class CommonArguments(ArgumentGroupData):
         configure_dual_logger(level=self.env.msg_level, fmt=self.env.msg_format, datefmt=self.env.date_format,
                               filename=self.env.output_home / self.env.logging_file)
 
-    def save_arguments(self, to: Path | str = None) -> Path | None:
+    def save_args(self, to: Path | str = None) -> Path | None:
         if not self.env.output_home:
             return None
         args_file = to if to else self.env.output_home / self.env.argument_file
@@ -145,7 +145,7 @@ class CommonArguments(ArgumentGroupData):
         make_parent_dir(args_file).write_text(args_json, encoding="utf-8")
         return args_file
 
-    def info_arguments(self):
+    def info_args(self):
         table = str_table(self.dataframe(), tablefmt="presto")  # "plain", "presto"
         for line in table.splitlines() + [hr(c='-')]:
             logger.info(line)
@@ -166,11 +166,11 @@ class RuntimeChecking:
 
     def __enter__(self):
         self.args.time.set_started()
-        self.args.save_arguments()
+        self.args.save_args()
 
     def __exit__(self, *exc_info):
         self.args.time.set_settled()
-        self.args.save_arguments()
+        self.args.save_args()
 
 
 class ArgumentsUsing:  # TODO: Remove someday!
@@ -179,7 +179,7 @@ class ArgumentsUsing:  # TODO: Remove someday!
         self.delete_on_exit: bool = delete_on_exit
 
     def __enter__(self) -> Path:
-        self.args_file: Path | None = self.args.save_arguments()
+        self.args_file: Path | None = self.args.save_args()
         return self.args_file
 
     def __exit__(self, *exc_info):
@@ -189,8 +189,8 @@ class ArgumentsUsing:  # TODO: Remove someday!
 
 class JobTimer:
     def __init__(self, name=None, args: CommonArguments = None, prefix=None, postfix=None,
-                 verbose=False, mt=0, mb=0, pt=0, pb=0, rt=0, rb=0, rc='-',
-                 flush_sec=None, mute_loggers=None, mute_warning=None):
+                 verbose=True, mt=0, mb=0, pt=0, pb=0, rt=0, rb=0, rc='-',
+                 flush_sec=0.3, mute_loggers=None, mute_warning=None):
         self.name = name
         self.args = args
         self.prefix = prefix if prefix and len(prefix) > 0 else None
@@ -241,7 +241,9 @@ class JobTimer:
                 flush_or(sys.stdout, sys.stderr, sec=self.flush_sec if self.flush_sec else None)
             if self.args:
                 self.args.time.set_started()
-                self.args.save_arguments()
+                self.args.save_args()
+                if self.verbose:
+                    self.args.info_args()
             self.t1 = datetime.now()
             return self
         except Exception as e:
@@ -252,7 +254,7 @@ class JobTimer:
         try:
             if self.args:
                 self.args.time.set_settled()
-                self.args.save_arguments()
+                self.args.save_args()
             self.t2 = datetime.now()
             self.td = self.t2 - self.t1
             flush_or(sys.stdout, sys.stderr, sec=self.flush_sec if self.flush_sec else None)
