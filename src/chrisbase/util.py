@@ -1,16 +1,21 @@
 from __future__ import annotations
 
 import dataclasses
+import json
 import random
 import re
 from dataclasses import asdict
 from itertools import groupby
 from operator import itemgetter, attrgetter
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
+from pymongo import MongoClient
+from pymongo.collection import Collection
+from pymongo.typings import _DocumentType
 from sqlalchemy.util import OrderedSet
 
 pd.options.display.width = 3000
@@ -169,3 +174,32 @@ def display_histogram(seqs, figsize=(10, 5), dpi=80, bins=20, rwidth=0.8, yaxis_
         plt.title(title)
     if show:
         plt.show()
+
+
+class MongoDB:
+    def __init__(self, db_name, tab_name, host="localhost", port=27017):
+        self.db_name = db_name
+        self.tab_name = tab_name
+        self.host = host
+        self.port = port
+        self.mongo: MongoClient[_DocumentType] | None = None
+        self.table: Collection | None = None
+
+    def __enter__(self) -> "MongoDB":
+        self.mongo = MongoClient(host=self.host, port=self.port)
+        self.table = self.mongo[self.db_name][self.tab_name]
+        return self
+
+    def __exit__(self, *exc_info):
+        self.mongo.close()
+
+    def output_table(self, to: str | Path, include_id: bool = False, sort_by="_id", *args, **kwargs):
+        with Path(to).open("w") as out:
+            if sort_by:
+                result_set = self.table.find(*args, **kwargs).sort(sort_by)
+            else:
+                result_set = self.table.find(*args, **kwargs)
+            for res in result_set:
+                if not include_id:
+                    _id = res.pop("_id")
+                out.write(json.dumps(res, ensure_ascii=False) + '\n')

@@ -1,12 +1,12 @@
 import json
 import logging
-import os
 from ipaddress import IPv4Address
 
 import httpx
 import netifaces
 
 from chrisbase.data import CommonArguments
+from chrisbase.util import MongoDB
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ def num_ip_addrs():
     return len(ips)
 
 
-def check_ip_addr(ip):
+def check_ip_addr(ip, _id=None):
     with httpx.Client(transport=httpx.HTTPTransport(local_address=ip)) as cli:
         res = cli.get("https://api64.ipify.org?format=json", timeout=10.0)
         checked_ip = json.loads(res.text)['ip']
@@ -37,6 +37,8 @@ def check_ip_addr(ip):
             'elapsed': round(res.elapsed.total_seconds(), 3),
             'size': round(res.num_bytes_downloaded / 1024, 6),
         }
+        if _id:
+            response['_id'] = _id
         logger.info("  * " + ' ----> '.join(map(lambda x: f"[{x}]", [
             f"{response['source']:<7s}",
             f"{response['status']}",
@@ -47,17 +49,17 @@ def check_ip_addr(ip):
         return response
 
 
-def check_ip_addrs(args: CommonArguments, num_workers=os.cpu_count()):
-    assert args.env.output_home, f"Output home is not set"
-    logger.info(f"Use {num_workers} workers to check {num_ip_addrs()} IP addresses")
-    with (args.env.output_home / f"{args.env.job_name}.jsonl").open("w") as out:
-        if num_workers < 2:
-            for ip in ips:
-                res = check_ip_addr(ip)
-                out.write(json.dumps(res, ensure_ascii=False) + '\n')
-        else:
-            from concurrent.futures import ProcessPoolExecutor, as_completed
-            pool = ProcessPoolExecutor(max_workers=num_workers)
-            jobs = [pool.submit(check_ip_addr, ip=ip) for ip in ips]
-            for job in as_completed(jobs):
-                out.write(json.dumps(job.result(), ensure_ascii=False) + '\n')
+def check_ip_addrs(args: CommonArguments, mongo: MongoDB | None = None):
+    logger.info(f"Use {args.env.max_workers} workers to check {num_ip_addrs()} IP addresses")
+    if args.env.max_workers < 2:
+        for i, ip in enumerate(ips):
+            res = check_ip_addr(ip=ip, _id=i + 1)
+            if mongo:
+                mongo.table.insert_one(res)
+    else:
+        from concurrent.futures import ProcessPoolExecutor, as_completed
+        pool = ProcessPoolExecutor(max_workers=args.env.max_workers)
+        jobs = [pool.submit(check_ip_addr, ip=ip, _id=i + 1) for i, ip in enumerate(ips)]
+        for job in as_completed(jobs):
+            if mongo:
+                mongo.table.insert_one(job.result())

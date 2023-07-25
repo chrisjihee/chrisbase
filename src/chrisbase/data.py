@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 import warnings
 from dataclasses import dataclass, field
@@ -65,6 +66,7 @@ class ProjectEnv(TypedData):
     working_path: Path = field(init=False)
     running_file: Path = field(init=False)
     command_args: List[str] = field(init=False)
+    max_workers: int = field(default=os.cpu_count())
     output_home: str | Path | None = field(default=None)
     logging_file: str | Path = field(default="message.out")
     argument_file: str | Path = field(default="arguments.json")
