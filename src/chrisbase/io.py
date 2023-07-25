@@ -63,7 +63,7 @@ class MuteStd:
             print(f"[MuteStd.__enter__()] [{type(e)}] {e}", file=sys_stderr)
             exit(11)
 
-    def __exit__(self, exc_type=None, exc_val=None, exc_tb=None):
+    def __exit__(self, *exc_info):
         try:
             flush_or(self.stdout, self.stderr, sec=self.flush_sec if self.flush_sec else None)
             if self.mute_logger:

@@ -250,7 +250,7 @@ class JobTimer:
             logger.error(f"[JobTimer.__enter__()] [{type(e)}] {e}")
             exit(11)
 
-    def __exit__(self, exc_type=None, exc_val=None, exc_tb=None):
+    def __exit__(self, *exc_info):
         try:
             if self.args:
                 self.args.time.set_settled()
