@@ -34,13 +34,13 @@ def check_ip_addr(ip):
         response = {
             'source': '.'.join(ip.rsplit('.', maxsplit=2)[1:]),
             'status': res.status_code,
-            'elapsed': res.elapsed.total_seconds() * 1000,
-            'size': res.num_bytes_downloaded / 1024
+            'elapsed': round(res.elapsed.total_seconds(), 3),
+            'size': round(res.num_bytes_downloaded / 1024, 6),
         }
         logger.info("  * " + ' ----> '.join(map(lambda x: f"[{x}]", [
             f"{response['source']:<7s}",
             f"{response['status']}",
-            f"{response['elapsed']:7,.0f}ms",
+            f"{response['elapsed'] * 1000:7,.0f}ms",
             f"{response['size']:7,.2f}KB",
             f"Checked IP: {checked_ip:<15s}",
         ])))
@@ -51,12 +51,13 @@ def check_ip_addrs(args: CommonArguments, num_workers=os.cpu_count()):
     assert args.env.output_home, f"Output home is not set"
     logger.info(f"Use {num_workers} workers to check {num_ip_addrs()} IP addresses")
     with (args.env.output_home / f"{args.env.job_name}.jsonl").open("w") as out:
-        if num_workers <= 1:
+        if num_workers < 2:
             for ip in ips:
-                out.writelines([check_ip_addr(ip), '\n'])
+                res = check_ip_addr(ip)
+                out.write(json.dumps(res, ensure_ascii=False) + '\n')
         else:
             from concurrent.futures import ProcessPoolExecutor, as_completed
             pool = ProcessPoolExecutor(max_workers=num_workers)
             jobs = [pool.submit(check_ip_addr, ip=ip) for ip in ips]
-            for p in as_completed(jobs):
-                out.writelines([json.dumps(p.result(), ensure_ascii=False), '\n'])
+            for job in as_completed(jobs):
+                out.write(json.dumps(job.result(), ensure_ascii=False) + '\n')
