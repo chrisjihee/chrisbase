@@ -177,17 +177,15 @@ def display_histogram(seqs, figsize=(10, 5), dpi=80, bins=20, rwidth=0.8, yaxis_
 
 
 class MongoDB:
-    def __init__(self, db_name, tab_name, host="localhost", port=27017):
+    def __init__(self, db_name, tab_name, clear_table=True, host="localhost", port=27017):
         self.db_name = db_name
         self.tab_name = tab_name
-        self.host = host
-        self.port = port
-        self.mongo: MongoClient[_DocumentType] | None = None
-        self.table: Collection | None = None
+        self.mongo = MongoClient(host=host, port=port)
+        self.table: Collection = self.mongo[self.db_name][self.tab_name]
+        if clear_table:
+            self.table.drop()
 
     def __enter__(self) -> "MongoDB":
-        self.mongo = MongoClient(host=self.host, port=self.port)
-        self.table = self.mongo[self.db_name][self.tab_name]
         return self
 
     def __exit__(self, *exc_info):
