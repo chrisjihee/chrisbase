@@ -2,10 +2,8 @@ import json
 import logging
 from ipaddress import IPv4Address
 
+import httpx
 import netifaces
-
-from chrisbase.data import CommonArguments
-from chrisbase.util import MongoDB
 
 logger = logging.getLogger(__name__)
 
@@ -46,19 +44,3 @@ def check_ip_addr(ip, _id=None):
             f"Checked IP: {checked_ip:<15s}",
         ])))
         return response
-
-
-def check_ip_addrs(args: CommonArguments, mongo: MongoDB | None = None):
-    logger.info(f"Use {args.env.max_workers} workers to check {num_ip_addrs()} IP addresses")
-    if args.env.max_workers < 2:
-        for i, ip in enumerate(ips):
-            res = check_ip_addr(ip=ip, _id=i + 1)
-            if mongo:
-                mongo.table.insert_one(res)
-    else:
-        from concurrent.futures import ProcessPoolExecutor, as_completed
-        pool = ProcessPoolExecutor(max_workers=args.env.max_workers)
-        jobs = [pool.submit(check_ip_addr, ip=ip, _id=i + 1) for i, ip in enumerate(ips)]
-        for job in as_completed(jobs):
-            if mongo:
-                mongo.table.insert_one(job.result())
