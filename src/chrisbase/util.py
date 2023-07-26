@@ -8,6 +8,7 @@ from dataclasses import asdict
 from itertools import groupby
 from operator import itemgetter, attrgetter
 from pathlib import Path
+from typing import List
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
@@ -15,7 +16,6 @@ import numpy as np
 import pandas as pd
 from pymongo import MongoClient
 from pymongo.collection import Collection
-from pymongo.typings import _DocumentType
 from sqlalchemy.util import OrderedSet
 
 pd.options.display.width = 3000
@@ -177,27 +177,37 @@ def display_histogram(seqs, figsize=(10, 5), dpi=80, bins=20, rwidth=0.8, yaxis_
 
 
 class MongoDB:
-    def __init__(self, db_name, tab_name, clear_table=False, host="localhost", port=27017):
-        self.db_name = db_name
-        self.tab_name = tab_name
-        self.mongo = MongoClient(host=host, port=port)
-        self.table: Collection = self.mongo[self.db_name][self.tab_name]
+    def __init__(self, db_name, tab_name, pool: List[MongoDB] | None = None, clear_table=False, host="localhost", port=27017):
+        self.pool: List[MongoDB] | None = pool
+        self.client: MongoClient = MongoClient(host=host, port=port)
+        self.table: Collection = self.client[db_name][tab_name]
         if clear_table:
             self.table.drop()
 
     def __enter__(self) -> "MongoDB":
+        if self.pool is not None:
+            self.pool.append(self)
         return self
 
     def __exit__(self, *exc_info):
-        self.mongo.close()
+        if self.pool is not None:
+            self.pool.remove(self)
+        self.client.close()
 
-    def output_table(self, to: str | Path, include_id: bool = False, sort_by="_id", *args, **kwargs):
+    def __repr__(self):
+        address = "Unknown"
+        if self.client.address:
+            host, port = self.client.address
+            address = f"{host}:{port}"
+        return f'<MongoDB client="{address}", table="{self.table.full_name}">'
+
+    def output_table(self, to: str | Path, exclude_id: bool = False, sort_by="_id", *args, **kwargs):
         with Path(to).open("w") as out:
             if sort_by:
                 result_set = self.table.find(*args, **kwargs).sort(sort_by)
             else:
                 result_set = self.table.find(*args, **kwargs)
             for res in result_set:
-                if not include_id:
+                if exclude_id:
                     _id = res.pop("_id")
                 out.write(json.dumps(res, ensure_ascii=False) + '\n')

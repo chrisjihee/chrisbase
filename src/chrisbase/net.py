@@ -1,8 +1,6 @@
-import json
 import logging
 from ipaddress import IPv4Address
 
-import httpx
 import netifaces
 
 logger = logging.getLogger(__name__)
@@ -22,25 +20,3 @@ ips = sorted(list(local_ip_addrs()))
 
 def num_ip_addrs():
     return len(ips)
-
-
-def check_ip_addr(ip, _id=None):
-    with httpx.Client(transport=httpx.HTTPTransport(local_address=ip)) as cli:
-        res = cli.get("https://api64.ipify.org?format=json", timeout=10.0)
-        checked_ip = json.loads(res.text)['ip']
-        response = {
-            'source': '.'.join(ip.rsplit('.', maxsplit=2)[1:]),
-            'status': res.status_code,
-            'elapsed': round(res.elapsed.total_seconds(), 3),
-            'size': round(res.num_bytes_downloaded / 1024, 6),
-        }
-        if _id:
-            response['_id'] = _id
-        logger.info("  * " + ' ----> '.join(map(lambda x: f"[{x}]", [
-            f"{response['source']:<7s}",
-            f"{response['status']}",
-            f"{response['elapsed'] * 1000:7,.0f}ms",
-            f"{response['size']:7,.2f}KB",
-            f"Checked IP: {checked_ip:<15s}",
-        ])))
-        return response
