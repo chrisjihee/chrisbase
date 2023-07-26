@@ -2,7 +2,6 @@ import json
 import logging
 from ipaddress import IPv4Address
 
-import httpx
 import netifaces
 
 from chrisbase.data import CommonArguments
