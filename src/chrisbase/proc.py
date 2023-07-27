@@ -16,9 +16,12 @@ def future_result(job: Future, timeout=None, default=None):
         return default
 
 
-def all_future_results(pool: ProcessPoolExecutor, jobs: List[Future], default=None, timeout=None):
-    tqdm = time_tqdm_cls(bar_size=100, desc_size=9)
-    for job in tqdm(jobs, pre="┇", desc="crawling", unit="jobs"):
+def all_future_results(pool: ProcessPoolExecutor, jobs: List[Future], default=None, timeout=None, use_tqdm=True):
+    loop = jobs
+    if use_tqdm:
+        tqdm = time_tqdm_cls(bar_size=100, desc_size=9)
+        loop = tqdm(jobs, pre="┇", desc="crawling", unit="jobs")
+    for job in loop:
         future_result(job, default=default, timeout=timeout)
     for process in pool._processes.values():
         process.terminate()
