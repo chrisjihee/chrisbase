@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import logging
 import random
 import re
+from concurrent.futures import ProcessPoolExecutor, Future, TimeoutError
 from dataclasses import asdict
 from itertools import groupby
 from operator import itemgetter, attrgetter
 from pathlib import Path
 from sys import stdout
+from typing import Iterable
 from typing import List
 
 import matplotlib.pyplot as plt
@@ -21,6 +24,8 @@ from pymongo.collection import Collection
 from sqlalchemy.util import OrderedSet
 
 from chrisbase.time import now
+
+logger = logging.getLogger(__name__)
 
 pd.options.display.width = 3000
 pd.options.display.max_rows = 3000
@@ -205,6 +210,13 @@ class MongoDB:
             address = f"{host}:{port}"
         return f'<MongoDB client="{address}", table="{self.table.full_name}">'
 
+    @property
+    def num_documents(self):
+        return self.count_documents({})
+
+    def count_documents(self, *args, **kwargs):
+        return self.table.count_documents(*args, **kwargs)
+
     def output_table(self, to: str | Path, exclude_id: bool = False, sort_by="_id", *args, **kwargs):
         with Path(to).open("w") as out:
             if sort_by:
@@ -281,3 +293,16 @@ class time_tqdm_cls:
 
     def get_lock(self):
         return tqdm_std.tqdm.get_lock()
+
+
+def wait_future_jobs(jobs: Iterable[Future], pool: ProcessPoolExecutor, timeout=None):
+    for job in jobs:
+        try:
+            job.result(timeout=timeout)
+        except TimeoutError as e:
+            job.cancel()
+            print()
+            logger.warning(f"{type(e).__qualname__} on job({job})")
+    for proc in pool._processes.values():
+        if proc.is_alive():
+            proc.terminate()

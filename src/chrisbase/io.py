@@ -7,11 +7,13 @@ import subprocess
 import sys
 import traceback
 import warnings
+from ipaddress import IPv4Address
 from itertools import chain
 from pathlib import Path
 from time import sleep
 from typing import Iterable
 
+import netifaces
 import pandas as pd
 from chrisdict import AttrDict
 from tabulate import tabulate
@@ -559,6 +561,20 @@ def get_hostaddr(default="127.0.0.1") -> str:
         st.connect(("8.8.8.8", 80))
         r = first_or(st.getsockname())
         return r if r else default
+
+
+def yield_local_addrs():
+    for inf in netifaces.interfaces():
+        inf_addrs = netifaces.ifaddresses(inf).get(netifaces.AF_INET)
+        if inf_addrs:
+            for inf_addr in [x.get('addr') for x in inf_addrs]:
+                if inf_addr and IPv4Address(inf_addr).is_global:
+                    yield inf_addr
+
+
+def get_ip_addrs():
+    local_addrs = list(yield_local_addrs())
+    return local_addrs, len(local_addrs)
 
 
 def prepend_to_global_path(*xs):

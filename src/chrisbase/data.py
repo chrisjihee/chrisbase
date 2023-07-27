@@ -13,7 +13,7 @@ import pandas as pd
 import typer
 from dataclasses_json import DataClassJsonMixin
 
-from chrisbase.io import get_hostname, get_hostaddr, running_file, first_or, cwd, hr, str_table, flush_or, make_parent_dir, configure_dual_logger, configure_unit_logger
+from chrisbase.io import get_hostname, get_hostaddr, running_file, first_or, cwd, hr, str_table, flush_or, make_parent_dir, configure_dual_logger, configure_unit_logger, get_ip_addrs
 from chrisbase.time import now, str_delta
 from chrisbase.util import tupled, SP, NO, to_dataframe
 
@@ -66,6 +66,7 @@ class ProjectEnv(TypedData):
     working_path: Path = field(init=False)
     running_file: Path = field(init=False)
     command_args: List[str] = field(init=False)
+    num_ip_addrs: int = field(init=False)
     max_workers: int = field(default=os.cpu_count())
     output_home: str | Path | None = field(default=None)
     logging_file: str | Path = field(default="message.out")
@@ -90,6 +91,7 @@ class ProjectEnv(TypedData):
         self.working_path = cwd(self.project_path)
         self.running_file = self.running_file.relative_to(self.working_path)
         self.command_args = sys.argv[1:]
+        self.ip_addrs, self.num_ip_addrs = get_ip_addrs()
         self.logging_file = Path(self.logging_file)
         self.argument_file = Path(self.argument_file)
         if self.output_home:
