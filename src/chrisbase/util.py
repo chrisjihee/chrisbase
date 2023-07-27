@@ -11,7 +11,7 @@ from itertools import groupby
 from operator import itemgetter, attrgetter
 from pathlib import Path
 from sys import stdout
-from typing import Iterable
+from typing import Iterable, Tuple
 from typing import List
 
 import matplotlib.pyplot as plt
@@ -295,14 +295,16 @@ class time_tqdm_cls:
         return tqdm_std.tqdm.get_lock()
 
 
-def wait_future_jobs(jobs: Iterable[Future], pool: ProcessPoolExecutor, timeout=None):
-    for job in jobs:
+def wait_future_jobs(jobs: Iterable[Tuple[int, Future]], pool: ProcessPoolExecutor, timeout=None) -> List[int]:
+    failed_jobs: List[int] = []
+    for i, job in jobs:
         try:
             job.result(timeout=timeout)
         except TimeoutError as e:
-            job.cancel()
             print()
             logger.warning(f"{type(e).__qualname__} on job({job})")
+            failed_jobs.append(i)
     for proc in pool._processes.values():
         if proc.is_alive():
             proc.terminate()
+    return failed_jobs
