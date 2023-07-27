@@ -8,15 +8,19 @@ from dataclasses import asdict
 from itertools import groupby
 from operator import itemgetter, attrgetter
 from pathlib import Path
+from sys import stdout
 from typing import List
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
+import tqdm.std as tqdm_std
 from pymongo import MongoClient
 from pymongo.collection import Collection
 from sqlalchemy.util import OrderedSet
+
+from chrisbase.time import now
 
 pd.options.display.width = 3000
 pd.options.display.max_rows = 3000
@@ -211,3 +215,70 @@ class MongoDB:
                 if exclude_id:
                     _id = res.pop("_id")
                 out.write(json.dumps(res, ensure_ascii=False) + '\n')
+
+
+class EmptyTqdm:
+    """Dummy tqdm which doesn't do anything."""
+
+    def __init__(self, *args, **kwargs):
+        self._iterator = args[0] if args else None
+
+    def __iter__(self):
+        return iter(self._iterator)
+
+    def __getattr__(self, _):
+        def empty_fn(*args, **kwargs):
+            return
+
+        return empty_fn
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        return
+
+
+class mute_tqdm_cls:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def __call__(self, *args, **kwargs):
+        return EmptyTqdm(*args, **kwargs)
+
+    def set_lock(self, *args, **kwargs):
+        self._lock = None
+
+    def get_lock(self):
+        pass
+
+
+class time_tqdm_cls:
+    def to_desc(self, desc, pre=None):
+        return f"{now(prefix=self.prefix)}{f' {pre}' if pre else ''} {desc:{self.aline}{self.desc_size}s}"
+
+    def __init__(self, bar_size, desc_size, prefix=None, file=stdout, aline='right'):
+        self.desc_size = desc_size
+        self.bar_size = bar_size
+        self.prefix = prefix
+        self.file = file
+        self.aline = '<' if str(aline).strip().lower() == 'left' else '>'
+
+    def __call__(self, *args, **kwargs):
+        if 'desc' not in kwargs or not kwargs['desc'] or ('position' in kwargs and kwargs['position'] and kwargs['position'] > 0):
+            return EmptyTqdm(*args, **kwargs)
+        else:
+            if kwargs['desc'].endswith(' #0'):
+                kwargs['desc'] = kwargs['desc'][:-3]
+            kwargs['desc'] = self.to_desc(desc=kwargs['desc'],
+                                          pre=kwargs.pop('pre') if 'pre' in kwargs else None)
+            kwargs.pop('file', None)
+            kwargs.pop('bar_format', None)
+            return tqdm_std.tqdm(*args, bar_format=f"{{l_bar}}{{bar:{self.bar_size}}}{{r_bar}}", file=self.file, **kwargs)
+
+    def set_lock(self, *args, **kwargs):
+        self._lock = None
+        return tqdm_std.tqdm.set_lock(*args, **kwargs)
+
+    def get_lock(self):
+        return tqdm_std.tqdm.get_lock()
