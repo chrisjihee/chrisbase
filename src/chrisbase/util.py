@@ -265,16 +265,15 @@ class time_tqdm_cls:
         self.aline = '<' if str(aline).strip().lower() == 'left' else '>'
 
     def __call__(self, *args, **kwargs):
-        if 'desc' not in kwargs or not kwargs['desc'] or ('position' in kwargs and kwargs['position'] and kwargs['position'] > 0):
-            return EmptyTqdm(*args, **kwargs)
-        else:
-            if kwargs['desc'].endswith(' #0'):
-                kwargs['desc'] = kwargs['desc'][:-3]
-            kwargs['desc'] = self.to_desc(desc=kwargs['desc'],
-                                          pre=kwargs.pop('pre') if 'pre' in kwargs else None)
-            kwargs.pop('file', None)
-            kwargs.pop('bar_format', None)
-            return tqdm_std.tqdm(*args, bar_format=f"{{l_bar}}{{bar:{self.bar_size}}}{{r_bar}}", file=self.file, **kwargs)
+        # if 'position' in kwargs and kwargs['position'] and kwargs['position'] > 0:
+        #     return EmptyTqdm(*args, **kwargs)
+        if 'desc' not in kwargs or not kwargs['desc']:
+            kwargs['desc'] = 'processing'
+        kwargs['desc'] = self.to_desc(desc=kwargs['desc'],
+                                      pre=kwargs.pop('pre') if 'pre' in kwargs else None)
+        kwargs.pop('file', None)
+        kwargs.pop('bar_format', None)
+        return tqdm_std.tqdm(*args, bar_format=f"{{l_bar}}{{bar:{self.bar_size}}}{{r_bar}}", file=self.file, **kwargs)
 
     def set_lock(self, *args, **kwargs):
         self._lock = None
