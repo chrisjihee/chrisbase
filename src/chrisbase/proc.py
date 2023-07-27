@@ -1,9 +1,11 @@
-import sys
+import logging
 from concurrent.futures import ProcessPoolExecutor, Future, TimeoutError
 from concurrent.futures.process import BrokenProcessPool
 from typing import List
 
 from chrisbase.util import time_tqdm_cls
+
+logger = logging.getLogger(__name__)
 
 
 def future_result(job: Future, timeout=None, default=None):
@@ -14,6 +16,10 @@ def future_result(job: Future, timeout=None, default=None):
         return default
     except BrokenProcessPool:
         return default
+    # except Exception as e:
+    #     print()
+    #     logger.warning(f"[{type(e)}] on future_result: (e.args={e.args}) {e}")
+    #     return default
 
 
 def all_future_results(pool: ProcessPoolExecutor, jobs: List[Future], default=None, timeout=None, use_tqdm=True):
