@@ -302,7 +302,7 @@ def wait_future_jobs(jobs: Iterable[Tuple[int, Future]], pool: ProcessPoolExecut
             job.result(timeout=timeout)
         except TimeoutError as e:
             print()
-            logger.warning(f"{type(e).__qualname__} on job({job})")
+            logger.warning(f"{type(e).__qualname__} on job[{i}]({job})")
             failed_jobs.append(i)
     for proc in pool._processes.values():
         if proc.is_alive():
