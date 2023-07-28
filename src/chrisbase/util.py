@@ -217,16 +217,27 @@ class MongoDB:
     def count_documents(self, *args, **kwargs):
         return self.table.count_documents(*args, **kwargs)
 
-    def output_table(self, to: str | Path, exclude_id: bool = False, sort_by="_id", *args, **kwargs):
+    def output_table(self, to: str | Path, tqdm=None, exclude_id: bool = False, sort_by="_id", *args, **kwargs):
         with Path(to).open("w") as out:
             if sort_by:
                 result_set = self.table.find(*args, **kwargs).sort(sort_by)
             else:
                 result_set = self.table.find(*args, **kwargs)
+            if tqdm:
+                result_set = tqdm(result_set, pre="┇", desc="exporting", unit="job", total=self.num_documents)
             for res in result_set:
                 if exclude_id:
                     _id = res.pop("_id")
                 out.write(json.dumps(res, ensure_ascii=False) + '\n')
+
+    def find_fields(self, *args, **kwargs):
+        return self.table.find(*args, **kwargs).distinct()
+
+    def find_field_values(self, field, *args, **kwargs):
+        return self.table.find(*args, **kwargs).distinct(field)
+
+    def gather_field_values(self, field, *args, **kwargs):
+        return list(self.find_field_values(field, *args, **kwargs))
 
 
 class EmptyTqdm:
