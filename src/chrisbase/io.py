@@ -631,7 +631,7 @@ def update_existing_handlers(handlers, debug=False):
         if isinstance(x, logging.Logger):
             if len(x.handlers) > 0:
                 for h in x.handlers:
-                    if isinstance(h, logging.FileHandler):
+                    if isinstance(h, logging.FileHandler) and h.stream:
                         h.stream.close()
                     x.removeHandler(h)
                 for h in handlers:
