@@ -13,7 +13,7 @@ import pandas as pd
 import typer
 from dataclasses_json import DataClassJsonMixin
 
-from chrisbase.io import get_hostname, get_hostaddr, running_file, first_or, cwd, hr, str_table, flush_or, make_parent_dir, configure_dual_logger, configure_unit_logger, get_ip_addrs
+from chrisbase.io import get_hostname, get_hostaddr, running_file, first_or, cwd, hr, str_table, flush_or, make_parent_dir, configure_unit_logger, get_ip_addrs
 from chrisbase.time import now, str_delta
 from chrisbase.util import tupled, SP, NO, to_dataframe
 
@@ -94,13 +94,7 @@ class ProjectEnv(TypedData):
         self.ip_addrs, self.num_ip_addrs = get_ip_addrs()
         self.logging_file = Path(self.logging_file)
         self.argument_file = Path(self.argument_file)
-        if self.output_home:
-            self.output_home = Path(self.output_home)
-            configure_dual_logger(level=self.msg_level, fmt=self.msg_format, datefmt=self.date_format,
-                                  filename=self.output_home / self.logging_file)
-        else:
-            configure_unit_logger(level=self.msg_level, fmt=self.msg_format, datefmt=self.date_format,
-                                  stream=sys.stdout)
+        configure_unit_logger(level=self.msg_level, fmt=self.msg_format, datefmt=self.date_format, stream=sys.stdout)
 
 
 @dataclass
@@ -137,9 +131,6 @@ class CommonArguments(ArgumentGroupData):
             self.env.argument_file = self.env.argument_file.with_stem(f"{self.env.argument_file.stem}-{self.tag}")
         if self.tag and not self.env.logging_file.stem.endswith(self.tag):
             self.env.logging_file = self.env.logging_file.with_stem(f"{self.env.logging_file.stem}-{self.tag}")
-        self.env.output_home = self.env.output_home or Path("output")
-        configure_dual_logger(level=self.env.msg_level, fmt=self.env.msg_format, datefmt=self.env.date_format,
-                              filename=self.env.output_home / self.env.logging_file)
 
     def save_args(self, to: Path | str = None) -> Path | None:
         if not self.env.output_home:
