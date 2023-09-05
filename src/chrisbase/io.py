@@ -15,7 +15,6 @@ from typing import Iterable
 
 import netifaces
 import pandas as pd
-from chrisdict import AttrDict
 from tabulate import tabulate
 
 from chrisbase.time import from_timestamp
@@ -457,29 +456,6 @@ def dict_to_pairs(obj: dict, keys=None, eq='=') -> list:
     if not keys:
         keys = obj.keys()
     return [f"{key}{eq}{obj[key]}" for key in keys]
-
-
-def merge_attrs(attrs, pre=None, post=None) -> AttrDict:
-    return AttrDict(merge_dicts(pre, attrs, post))
-
-
-def load_attrs(file, pre=None, post=None) -> AttrDict:
-    return merge_attrs(load_json(file), pre=pre, post=post)
-
-
-def load_attrs_with_base(file, base_name='base_conf', pre=None, post=None) -> AttrDict:
-    file = Path(file)
-    attrs = load_attrs(file, pre=pre)
-    if base_name in attrs and attrs.base_conf:
-        base_attrs = []
-        for base_conf in attrs[base_name]:
-            base_attrs.append(load_attrs_with_base(next(x for x in map(lambda x: x(), [
-                lambda: exists_or(base_conf),
-                lambda: exists_or(file.parent / base_conf),
-                lambda: exists_or(file.parent / Path(base_conf).name)
-            ]) if x)))
-        attrs = merge_dicts(*base_attrs, attrs)
-    return AttrDict(merge_dicts(attrs, post))
 
 
 def save_attrs(obj: dict, file, keys=None, excl=None):
