@@ -80,6 +80,12 @@ class ProjectEnv(TypedData):
         self.job_name = name
         return self
 
+    def info_args(self):
+        table = str_table(to_dataframe(self), tablefmt="presto")  # "plain", "presto"
+        for line in table.splitlines() + [hr(c='-')]:
+            logger.info(line)
+        return self
+
     def __post_init__(self):
         assert self.project, "Project name must be provided"
         self.hostname = get_hostname()
