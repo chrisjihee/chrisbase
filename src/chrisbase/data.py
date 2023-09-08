@@ -147,8 +147,10 @@ class CommonArguments(ArgumentGroupData):
         return args_file
 
     def info_args(self):
-        table = str_table(self.dataframe(), tablefmt="presto")  # "plain", "presto"
-        for line in table.splitlines() + [hr(c='-')]:
+        table = str_table(self.dataframe(), tablefmt="presto")
+        lines = table.splitlines()
+        lines = [lines[1]] + lines + [lines[1]]
+        for line in lines:
             logger.info(line)
         return self
 
