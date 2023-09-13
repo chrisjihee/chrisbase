@@ -13,7 +13,7 @@ import pandas as pd
 import typer
 from dataclasses_json import DataClassJsonMixin
 
-from chrisbase.io import get_hostname, get_hostaddr, running_file, first_or, cwd, hr, str_table, flush_or, make_parent_dir, configure_unit_logger, get_ip_addrs
+from chrisbase.io import get_hostname, get_hostaddr, running_file, first_or, cwd, hr, str_table, flush_or, make_parent_dir, get_ip_addrs, configure_unit_logger, configure_dual_logger
 from chrisbase.time import now, str_delta
 from chrisbase.util import tupled, SP, NO, to_dataframe
 
@@ -69,7 +69,7 @@ class ProjectEnv(TypedData):
     num_ip_addrs: int = field(init=False)
     max_workers: int = field(default=os.cpu_count())
     output_home: str | Path | None = field(default=None)
-    logging_file: str | Path = field(default="message.out")
+    logging_file: str | Path | None = field(default=None)
     argument_file: str | Path = field(default="arguments.json")
     debugging: bool = field(default=False)
     msg_level: int = field(default=logging.INFO)
@@ -98,9 +98,13 @@ class ProjectEnv(TypedData):
         self.running_file = self.running_file.relative_to(self.working_path)
         self.command_args = sys.argv[1:]
         self.ip_addrs, self.num_ip_addrs = get_ip_addrs()
-        self.logging_file = Path(self.logging_file)
+        self.output_home = Path(self.output_home) if self.output_home else None
+        self.logging_file = Path(self.logging_file) if self.logging_file else None
         self.argument_file = Path(self.argument_file)
-        configure_unit_logger(level=self.msg_level, fmt=self.msg_format, datefmt=self.date_format, stream=sys.stdout)
+        if not self.output_home or not self.logging_file:
+            configure_unit_logger(level=self.msg_level, fmt=self.msg_format, datefmt=self.date_format, stream=sys.stdout)
+        else:
+            configure_dual_logger(level=self.msg_level, fmt=self.msg_format, datefmt=self.date_format, stream=sys.stdout, filename=self.output_home / self.logging_file)
 
 
 @dataclass
@@ -135,7 +139,7 @@ class CommonArguments(ArgumentGroupData):
         super().__post_init__()
         if self.tag and not self.env.argument_file.stem.endswith(self.tag):
             self.env.argument_file = self.env.argument_file.with_stem(f"{self.env.argument_file.stem}-{self.tag}")
-        if self.tag and not self.env.logging_file.stem.endswith(self.tag):
+        if self.tag and self.env.logging_file and not self.env.logging_file.stem.endswith(self.tag):
             self.env.logging_file = self.env.logging_file.with_stem(f"{self.env.logging_file.stem}-{self.tag}")
 
     def save_args(self, to: Path | str = None) -> Path | None:

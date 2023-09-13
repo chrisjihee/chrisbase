@@ -3,6 +3,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import logging
+import os
 import random
 import re
 from concurrent.futures import ProcessPoolExecutor, Future, TimeoutError
@@ -19,11 +20,10 @@ import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
 import tqdm.std as tqdm_std
+from chrisbase.time import now
 from pymongo import MongoClient
 from pymongo.collection import Collection
 from sqlalchemy.util import OrderedSet
-
-from chrisbase.time import now
 
 logger = logging.getLogger(__name__)
 
@@ -256,7 +256,7 @@ class EmptyTqdm:
         return
 
 
-class mute_tqdm_cls:
+class empty_tqdm_cls:
     def __init__(self, *args, **kwargs):
         pass
 
@@ -274,7 +274,7 @@ class time_tqdm_cls:
     def to_desc(self, desc, pre=None):
         return f"{now(prefix=self.prefix)}{f' {pre}' if pre else ''} {desc:{self.aline}{self.desc_size}s}"
 
-    def __init__(self, bar_size, desc_size, prefix=None, file=stdout, aline='right'):
+    def __init__(self, bar_size=50, desc_size=10, prefix=None, file=stdout, aline='right'):
         self.desc_size = desc_size
         self.bar_size = bar_size
         self.prefix = prefix
@@ -282,8 +282,34 @@ class time_tqdm_cls:
         self.aline = '<' if str(aline).strip().lower() == 'left' else '>'
 
     def __call__(self, *args, **kwargs):
-        # if 'position' in kwargs and kwargs['position'] and kwargs['position'] > 0:
-        #     return EmptyTqdm(*args, **kwargs)
+        if 'desc' not in kwargs or not kwargs['desc']:
+            kwargs['desc'] = 'processing'
+        kwargs['desc'] = self.to_desc(desc=kwargs['desc'],
+                                      pre=kwargs.pop('pre') if 'pre' in kwargs else None)
+        kwargs.pop('file', None)
+        kwargs.pop('bar_format', None)
+        return tqdm_std.tqdm(*args, bar_format=f"{{l_bar}}{{bar:{self.bar_size}}}{{r_bar}}", file=self.file, **kwargs)
+
+    def set_lock(self, *args, **kwargs):
+        self._lock = None
+        return tqdm_std.tqdm.set_lock(*args, **kwargs)
+
+    def get_lock(self):
+        return tqdm_std.tqdm.get_lock()
+
+
+class mute_tqdm_cls:
+    def to_desc(self, desc, pre=None):
+        return f"{f' {pre}' if pre else ''} {desc:{self.aline}{self.desc_size}s}"
+
+    def __init__(self, bar_size=50, desc_size=10, prefix=None, file=open(os.devnull, 'w'), aline='right'):
+        self.desc_size = desc_size
+        self.bar_size = bar_size
+        self.prefix = prefix
+        self.file = file
+        self.aline = '<' if str(aline).strip().lower() == 'left' else '>'
+
+    def __call__(self, *args, **kwargs):
         if 'desc' not in kwargs or not kwargs['desc']:
             kwargs['desc'] = 'processing'
         kwargs['desc'] = self.to_desc(desc=kwargs['desc'],
