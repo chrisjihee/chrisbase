@@ -6,7 +6,7 @@ import logging
 import os
 import random
 import re
-from concurrent.futures import ProcessPoolExecutor, Future, TimeoutError
+from concurrent.futures import ProcessPoolExecutor, Future
 from dataclasses import asdict
 from itertools import groupby
 from operator import itemgetter, attrgetter
@@ -218,8 +218,8 @@ class MongoDB:
     def count_documents(self, *args, **kwargs):
         return self.table.count_documents(*args, **kwargs)
 
-    def export_table(self, to: str | Path, tqdm=None, exclude_id: bool = False, sort_by="_id", *args, **kwargs):
-        existing_indices = set()
+    def export_table(self, to: str | Path, tqdm=None, interval: int = 1, exclude_id: bool = False, sort_by="_id", *args, **kwargs):  # TODO: Remove someday
+        existing_ids = set()
         with Path(to).open("w") as out:
             if sort_by:
                 result_set = self.table.find(*args, **kwargs).sort(sort_by)
@@ -227,12 +227,17 @@ class MongoDB:
                 result_set = self.table.find(*args, **kwargs)
             if tqdm:
                 result_set = tqdm(result_set, total=self.num_documents, desc="exporting", unit="ea")
-            for res in result_set:
-                existing_indices.add(res.get("_id") - 1)
+            for i, res in enumerate(result_set, start=1):
+                existing_ids.add(res.get("_id"))
                 if exclude_id:
                     res.pop("_id")
                 out.write(json.dumps(res, ensure_ascii=False) + '\n')
-        return existing_indices
+                if isinstance(result_set, tqdm_std.tqdm):
+                    if i > 0 and i % interval == 0:
+                        logger.info(result_set)
+            if isinstance(result_set, tqdm_std.tqdm):
+                logger.info(result_set)
+        return existing_ids
 
 
 class EmptyTqdm:
@@ -336,15 +341,14 @@ class mute_tqdm_cls:
 def wait_future_jobs(jobs: Iterable[Tuple[int, Future]], pool: ProcessPoolExecutor, interval: int = 1, timeout=None) -> List[int]:
     failed_jobs: List[int] = []
     for i, job in jobs:
-        if isinstance(jobs, tqdm_std.tqdm):
-            if i > 0 == i % interval:
-                logger.info(jobs)
         try:
             job.result(timeout=timeout)
-        except TimeoutError as e:
-            print()
-            logger.warning(f"{type(e).__qualname__} on job[{i}]({job})")
+        except Exception as e:
+            logger.warning(f"{type(e)} on job[{i}]({job})")
             failed_jobs.append(i)
+        if isinstance(jobs, tqdm_std.tqdm):
+            if i > 0 and i % interval == 0:
+                logger.info(jobs)
     if isinstance(jobs, tqdm_std.tqdm):
         logger.info(jobs)
     for proc in pool._processes.values():
