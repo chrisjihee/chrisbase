@@ -130,8 +130,8 @@ class TimeChecker(ResultData):
 @dataclass
 class CommonArguments(ArgumentGroupData):
     tag = None
+    time = TimeChecker()
     env: ProjectEnv = field()
-    time: TimeChecker = field(default=TimeChecker())
 
     def __post_init__(self):
         super().__post_init__()
@@ -171,8 +171,8 @@ class CommonArguments(ArgumentGroupData):
         if not columns:
             columns = [self.data_type, "value"]
         return pd.concat([
-            to_dataframe(columns=columns, raw=self.env, data_prefix="env"),
             to_dataframe(columns=columns, raw=self.time, data_prefix="time"),
+            to_dataframe(columns=columns, raw=self.env, data_prefix="env"),
         ]).reset_index(drop=True)
 
 

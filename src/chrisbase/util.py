@@ -226,7 +226,7 @@ class MongoDB:
             else:
                 result_set = self.table.find(*args, **kwargs)
             if tqdm:
-                result_set = tqdm(result_set, pre="┇", desc="exporting", unit="job", total=self.num_documents)
+                result_set = tqdm(result_set, total=self.num_documents, desc="exporting", unit="ea")
             for res in result_set:
                 existing_indices.add(res.get("_id") - 1)
                 if exclude_id:
@@ -271,9 +271,13 @@ class empty_tqdm_cls:
         pass
 
 
-class time_tqdm_cls:
+class time_tqdm_cls:  # TODO: Remove someday!
     def to_desc(self, desc, pre=None):
-        return f"{now(prefix=self.prefix)}{f' {pre}' if pre else ''} {desc:{self.aline}{self.desc_size}s}"
+        return NO.join([
+            f'{now(prefix=self.prefix)} ',
+            f'{pre} ' if pre else '',
+            f'{desc:{self.aline}{self.desc_size}s}',
+        ])
 
     def __init__(self, bar_size=50, desc_size=10, prefix=None, file=stdout, aline='right'):
         self.desc_size = desc_size
@@ -301,12 +305,14 @@ class time_tqdm_cls:
 
 class mute_tqdm_cls:
     def to_desc(self, desc, pre=None):
-        return f"{f' {pre}' if pre else ''} {desc:{self.aline}{self.desc_size}s}"
+        return NO.join([
+            f'{pre} ' if pre else '',
+            f'{desc:{self.aline}{self.desc_size}s}',
+        ])
 
-    def __init__(self, bar_size=50, desc_size=10, prefix=None, file=open(os.devnull, 'w'), aline='right'):
+    def __init__(self, bar_size=50, desc_size=10, file=open(os.devnull, 'w'), aline='right'):
         self.desc_size = desc_size
         self.bar_size = bar_size
-        self.prefix = prefix
         self.file = file
         self.aline = '<' if str(aline).strip().lower() == 'left' else '>'
 
@@ -327,15 +333,20 @@ class mute_tqdm_cls:
         return tqdm_std.tqdm.get_lock()
 
 
-def wait_future_jobs(jobs: Iterable[Tuple[int, Future]], pool: ProcessPoolExecutor, timeout=None) -> List[int]:
+def wait_future_jobs(jobs: Iterable[Tuple[int, Future]], pool: ProcessPoolExecutor, interval: int = 1, timeout=None) -> List[int]:
     failed_jobs: List[int] = []
     for i, job in jobs:
+        if isinstance(jobs, tqdm_std.tqdm):
+            if i > 0 == i % interval:
+                logger.info(jobs)
         try:
             job.result(timeout=timeout)
         except TimeoutError as e:
             print()
             logger.warning(f"{type(e).__qualname__} on job[{i}]({job})")
             failed_jobs.append(i)
+    if isinstance(jobs, tqdm_std.tqdm):
+        logger.info(jobs)
     for proc in pool._processes.values():
         if proc.is_alive():
             proc.terminate()
