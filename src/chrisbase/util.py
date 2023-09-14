@@ -338,14 +338,15 @@ class mute_tqdm_cls:
         return tqdm_std.tqdm.get_lock()
 
 
-def wait_future_jobs(jobs: Iterable[Tuple[int, Future]], pool: ProcessPoolExecutor, interval: int = 1, timeout=None) -> List[int]:
-    failed_jobs: List[int] = []
+def wait_future_jobs(jobs: Iterable[Tuple[int, Future]], pool: ProcessPoolExecutor, interval: int = 1, timeout=None, debugging: bool = False):
     for i, job in jobs:
-        try:
+        if debugging:
             job.result(timeout=timeout)
-        except Exception as e:
-            logger.warning(f"{type(e)} on job[{i}]({job})")
-            failed_jobs.append(i)
+        else:
+            try:
+                job.result(timeout=timeout)
+            except Exception as e:
+                logger.warning(f"{type(e)} on job[{i}]({job})")
         if isinstance(jobs, tqdm_std.tqdm):
             if i > 0 and i % interval == 0:
                 logger.info(jobs)
@@ -354,4 +355,3 @@ def wait_future_jobs(jobs: Iterable[Tuple[int, Future]], pool: ProcessPoolExecut
     for proc in pool._processes.values():
         if proc.is_alive():
             proc.terminate()
-    return failed_jobs
