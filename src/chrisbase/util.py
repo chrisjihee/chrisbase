@@ -20,10 +20,11 @@ import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
 import tqdm.std as tqdm_std
-from chrisbase.time import now
 from pymongo import MongoClient
 from pymongo.collection import Collection
 from sqlalchemy.util import OrderedSet
+
+from chrisbase.time import now
 
 logger = logging.getLogger(__name__)
 
