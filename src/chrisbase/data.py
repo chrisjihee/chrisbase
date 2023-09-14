@@ -138,13 +138,15 @@ class CommonArguments(ArgumentGroupData):
         if self.tag:
             if not self.env.argument_file.stem.startswith(self.tag):
                 self.env.argument_file = self.env.argument_file.with_stem(f"{self.tag}-{self.env.argument_file.stem}")
-            if self.env.logging_file and not self.env.logging_file.stem.startswith(self.tag):
-                self.env.logging_file = self.env.logging_file.with_stem(f"{self.tag}-{self.env.logging_file.stem}")
+            if self.env.logging_file:
+                if not self.env.logging_file.stem.startswith(self.tag):
+                    self.env.logging_file = self.env.logging_file.with_stem(f"{self.tag}-{self.env.logging_file.stem}")
         if self.env.time_stamp:
             if not self.env.argument_file.stem.endswith(self.env.time_stamp):
                 self.env.argument_file = self.env.argument_file.with_stem(f"{self.env.argument_file.stem}-{self.env.time_stamp}")
-            if not self.env.logging_file.stem.endswith(self.env.time_stamp):
-                self.env.logging_file = self.env.logging_file.with_stem(f"{self.env.logging_file.stem}-{self.env.time_stamp}")
+            if self.env.logging_file:
+                if not self.env.logging_file.stem.endswith(self.env.time_stamp):
+                    self.env.logging_file = self.env.logging_file.with_stem(f"{self.env.logging_file.stem}-{self.env.time_stamp}")
         if self.env.output_home and self.env.logging_file:
             configure_dual_logger(level=self.env.msg_level, fmt=self.env.msg_format, datefmt=self.env.date_format, stream=sys.stdout,
                                   filename=self.env.output_home / self.env.logging_file)
