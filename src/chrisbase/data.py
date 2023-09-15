@@ -12,6 +12,8 @@ from typing import Optional
 import pandas as pd
 import typer
 from dataclasses_json import DataClassJsonMixin
+from pymongo import MongoClient
+from pymongo.collection import Collection
 
 from chrisbase.io import get_hostname, get_hostaddr, running_file, first_or, cwd, hr, str_table, flush_or, make_parent_dir, get_ip_addrs, configure_unit_logger, configure_dual_logger
 from chrisbase.time import now, str_delta
@@ -54,6 +56,24 @@ class ArgumentGroupData(TypedData):
 
     def __post_init__(self):
         super().__post_init__()
+
+
+@dataclass
+class MongoDBOption(OptionData):
+    tab_name: str = field()
+    db_name: str = field()
+    db_host: str = field(default="localhost:6382")
+
+    def client(self) -> MongoClient:
+        return MongoClient(f"mongodb://{self.db_host}")
+
+    def table(self, client) -> Collection:
+        return client[self.db_name][self.tab_name]
+
+    def clear_table(self):
+        with self.client() as db:
+            self.table(db).drop()
+        return self
 
 
 @dataclass
