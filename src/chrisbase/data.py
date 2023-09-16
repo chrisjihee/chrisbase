@@ -63,11 +63,20 @@ class TableOption(OptionData):
     db_name: str = field()
     tab_name: str = field()
 
-    def client(self) -> MongoClient:
-        return MongoClient(f"mongodb://{self.db_host}")
+    def __repr__(self):
+        return f"{self.db_host}/{self.db_name}/{self.tab_name}"
 
-    def table(self, client) -> Collection:
-        return client[self.db_name][self.tab_name]
+
+class MongoDBTable:
+    def __init__(self, opt: TableOption):
+        self.client = MongoClient(f"mongodb://{opt.db_host}")
+        self.table = self.client[opt.db_name][opt.tab_name]
+
+    def __enter__(self) -> Collection:
+        return self.table
+
+    def __exit__(self, *exc_info):
+        self.client.close()
 
 
 @dataclass
