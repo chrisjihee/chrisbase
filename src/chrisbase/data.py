@@ -58,7 +58,7 @@ class ArgumentGroupData(TypedData):
 
 
 @dataclass
-class MongoDBOption(OptionData):
+class TableOption(OptionData):
     tab_name: str = field()
     db_name: str = field()
     db_host: str = field(default="localhost:6382")
