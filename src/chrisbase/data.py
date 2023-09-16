@@ -69,11 +69,6 @@ class MongoDBOption(OptionData):
     def table(self, client) -> Collection:
         return client[self.db_name][self.tab_name]
 
-    def clear_table(self):
-        with self.client() as db:
-            self.table(db).drop()
-        return self
-
 
 @dataclass
 class ProjectEnv(TypedData):
