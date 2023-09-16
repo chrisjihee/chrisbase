@@ -59,9 +59,9 @@ class ArgumentGroupData(TypedData):
 
 @dataclass
 class TableOption(OptionData):
-    tab_name: str = field()
+    db_host: str = field()
     db_name: str = field()
-    db_host: str = field(default="localhost:6382")
+    tab_name: str = field()
 
     def client(self) -> MongoClient:
         return MongoClient(f"mongodb://{self.db_host}")
