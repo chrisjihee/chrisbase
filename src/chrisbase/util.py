@@ -186,7 +186,7 @@ def display_histogram(seqs, figsize=(10, 5), dpi=80, bins=20, rwidth=0.8, yaxis_
         plt.show()
 
 
-class MongoDB:
+class MongoDB:  # TODO: Remove someday
     def __init__(self, db_name, tab_name, pool: List[MongoDB] | None = None, clear_table=False, host="localhost", port=27017):
         self.pool: List[MongoDB] | None = pool
         self.client: MongoClient = MongoClient(host=host, port=port)
@@ -338,7 +338,13 @@ class mute_tqdm_cls:
         return tqdm_std.tqdm.get_lock()
 
 
-def wait_future_jobs(jobs: Iterable[Tuple[int, Future]], pool: ProcessPoolExecutor, interval: int = 1, timeout=None, debugging: bool = False):
+def terminate_processes(pool: ProcessPoolExecutor):
+    for proc in pool._processes.values():
+        if proc.is_alive():
+            proc.terminate()
+
+
+def wait_future_jobs(jobs: Iterable[Tuple[int, Future]], pool: ProcessPoolExecutor, interval: int = 1, timeout=None, debugging: bool = False):  # TODO: Remove someday
     for i, job in jobs:
         if debugging:
             job.result(timeout=timeout)
@@ -352,6 +358,4 @@ def wait_future_jobs(jobs: Iterable[Tuple[int, Future]], pool: ProcessPoolExecut
                 logger.info(jobs)
     if isinstance(jobs, tqdm_std.tqdm):
         logger.info(jobs)
-    for proc in pool._processes.values():
-        if proc.is_alive():
-            proc.terminate()
+    terminate_processes(pool)
