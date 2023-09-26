@@ -7,11 +7,12 @@ import subprocess
 import sys
 import traceback
 import warnings
+from contextlib import contextmanager
 from ipaddress import IPv4Address
 from itertools import chain
 from pathlib import Path
 from time import sleep
-from typing import Iterable
+from typing import IO, Any, Iterator, Iterable
 
 import netifaces
 import pandas as pd
@@ -392,6 +393,38 @@ def load_json(path: str | Path, **kwargs) -> dict:
     except Exception as e:
         print(f"Error occurred from [load_json(path={path})]", file=sys_stderr)
         raise RuntimeError(f"Please validate json file!\n- path: {path}\n- type: {type(e).__qualname__}\n- detail: {e}")
+
+
+@contextmanager
+def open_compressed(path: str | Path, mode: str = 'rb', **kwargs) -> Iterator[IO[Any]]:
+    file = Path(path)
+    assert file.exists() and file.is_file(), f"file={file}"
+    if file.suffix == '.gz':
+        try:
+            import gzip
+            with gzip.open(file, mode, **kwargs) as fp:
+                yield fp
+        finally:
+            fp.close()
+    elif file.suffix == '.bz2':
+        try:
+            import bz2
+            with bz2.open(file, mode, **kwargs) as fp:
+                yield fp
+        finally:
+            fp.close()
+    else:
+        try:
+            with file.open(mode, **kwargs) as fp:
+                yield fp
+        finally:
+            fp.close()
+
+
+def iter_compressed(path: str | Path, mode: str = 'rb', **kwargs) -> Iterator[str]:
+    with open_compressed(path, mode, **kwargs) as fp:
+        for line in fp:
+            yield line.decode('utf-8').rstrip()
 
 
 def save_json(obj: dict, path: str | Path, **kwargs):
