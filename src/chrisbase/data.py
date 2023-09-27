@@ -11,6 +11,7 @@ from typing import Optional
 import pandas as pd
 import typer
 from dataclasses_json import DataClassJsonMixin
+from elasticsearch import Elasticsearch
 from pymongo import MongoClient
 from pymongo.collection import Collection
 
@@ -67,6 +68,25 @@ class TableOption(OptionData):
         return f"{self.db_host}/{self.db_name}/{self.tab_name}"
 
 
+@dataclass
+class IndexOption(OptionData):
+    host: str = field()
+    user: str = field()
+    pswd: str = field()
+    cert: str = field()
+    name: str = field()
+
+    def __post_init__(self):
+        assert Path(self.pswd).exists(), f"Password file not found: {self.pswd}"
+        pswd_str = Path(self.pswd).read_text().strip().splitlines()[-1].strip()
+        assert len(pswd_str) > 0, f"No password found from {self.pswd}"
+        self.pswd = pswd_str
+        assert Path(self.cert).exists(), f"Certificate file not found: {self.cert}"
+
+    def __repr__(self):
+        return f"{self.user}@{self.host}/{self.name}"
+
+
 class MongoDBTable:
     def __init__(self, opt: TableOption):
         self.client = MongoClient(f"mongodb://{opt.db_host}")
@@ -74,6 +94,25 @@ class MongoDBTable:
 
     def __enter__(self) -> Collection:
         return self.table
+
+    def __exit__(self, *exc_info):
+        self.client.close()
+
+
+class ElasticSearchClient:
+    def __init__(self, opt: IndexOption):
+        self.client = Elasticsearch(
+            hosts=f"https://{opt.host}",
+            request_timeout=30,
+            max_retries=10,
+            retry_on_timeout=True,
+            basic_auth=(opt.user, opt.pswd),
+            verify_certs=True,
+            ca_certs=opt.cert,
+        )
+
+    def __enter__(self) -> Elasticsearch:
+        return self.client
 
     def __exit__(self, *exc_info):
         self.client.close()
