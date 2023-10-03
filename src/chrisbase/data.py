@@ -1,3 +1,4 @@
+import json
 import logging
 import sys
 import warnings
@@ -74,6 +75,16 @@ class IndexOption(OptionData):
     user: str = field()
     pswd: str = field()
     name: str = field()
+    create_opt: str | Path | dict = field(default_factory=dict)
+
+    def __post_init__(self):
+        if self.create_opt:
+            self.create_opt = Path(self.create_opt)
+            if self.create_opt.exists():
+                with open(self.create_opt) as f:
+                    self.create_opt = json.load(f)
+            else:
+                self.create_opt = {}
 
     def __repr__(self):
         return f"{self.user}@{self.host}/{self.name}"
