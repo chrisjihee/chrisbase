@@ -73,15 +73,7 @@ class IndexOption(OptionData):
     host: str = field()
     user: str = field()
     pswd: str = field()
-    cert: str = field()
     name: str = field()
-
-    def __post_init__(self):
-        assert Path(self.pswd).exists(), f"Password file not found: {self.pswd}"
-        pswd_str = Path(self.pswd).read_text().strip().splitlines()[-1].strip()
-        assert len(pswd_str) > 0, f"No password found from {self.pswd}"
-        self.pswd = pswd_str
-        assert Path(self.cert).exists(), f"Certificate file not found: {self.cert}"
 
     def __repr__(self):
         return f"{self.user}@{self.host}/{self.name}"
@@ -102,13 +94,11 @@ class MongoDBTable:
 class ElasticSearchClient:
     def __init__(self, opt: IndexOption):
         self.client = Elasticsearch(
-            hosts=f"https://{opt.host}",
+            hosts=f"http://{opt.host}",
             request_timeout=30,
             max_retries=10,
             retry_on_timeout=True,
             basic_auth=(opt.user, opt.pswd),
-            verify_certs=True,
-            ca_certs=opt.cert,
         )
 
     def __enter__(self) -> Elasticsearch:
