@@ -64,6 +64,7 @@ class TableOption(OptionData):
     db_host: str = field()
     db_name: str = field()
     tab_name: str = field()
+    tab_reset: bool = field(default=False)
 
     def __repr__(self):
         return f"{self.db_host}/{self.db_name}/{self.tab_name}"
@@ -75,16 +76,17 @@ class IndexOption(OptionData):
     user: str = field()
     pswd: str = field()
     name: str = field()
-    create_opt: str | Path | dict = field(default_factory=dict)
+    reset: bool = field(default=False)
+    create: str | Path = field(default="index_create_opt.json")
+    create_opt = None
 
     def __post_init__(self):
-        if self.create_opt:
-            self.create_opt = Path(self.create_opt)
-            if self.create_opt.exists():
-                with open(self.create_opt) as f:
-                    self.create_opt = json.load(f)
-            else:
-                self.create_opt = {}
+        self.create = Path(self.create)
+        self.create_opt = {}
+        if self.create.exists():
+            content = self.create.read_text()
+            if content:
+                self.create_opt = json.loads(content)
 
     def __repr__(self):
         return f"{self.user}@{self.host}/{self.name}"
@@ -234,7 +236,6 @@ class CommonArguments(ArgumentGroupData):
         if not columns:
             columns = [self.data_type, "value"]
         return pd.concat([
-            to_dataframe(columns=columns, raw=self.time, data_prefix="time"),
             to_dataframe(columns=columns, raw=self.env, data_prefix="env"),
         ]).reset_index(drop=True)
 
