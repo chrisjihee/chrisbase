@@ -68,6 +68,8 @@ class ArgumentGroupData(TypedData):
 class FileOption(OptionData):
     home: str | Path = field()
     name: str | Path = field()
+    mode: str = field(default="rb")
+    strict: bool = field(default=False)
     encoding: str = field(default="utf-8")
 
     def __post_init__(self):
@@ -85,6 +87,7 @@ class TableOption(OptionData):
     sort: str = field(default="_id")
     find: dict = field(default_factory=dict)
     reset: bool = field(default=False)
+    strict: bool = field(default=False)
     timeout: int = field(default=5000)
 
     def __post_init__(self):
@@ -102,6 +105,7 @@ class IndexOption(OptionData):
     user: str = field()
     pswd: str = field()
     reset: bool = field(default=False)
+    strict: bool = field(default=False)
     timeout: int = field(default=10)
     retrial: int = field(default=3)
     create: str | Path = field(default="index_create_args.json")
@@ -119,31 +123,8 @@ class IndexOption(OptionData):
         return f"{self.user}@{self.home}/{self.name}"
 
 
-@dataclass
-class DataOption(OptionData):
-    start: int = field(default=0)
-    limit: int = field(default=-1)
-    batch: int = field(default=1)
-    inter: int = field(default=10000)
-    total: int = field(default=-1)
-    file: FileOption | None = field(default=None)
-    table: TableOption | None = field(default=None)
-    index: IndexOption | None = field(default=None)
-
-    def make_batches(self, inputs, num_input):
-        if self.start > 0:
-            inputs = islice(inputs, self.start, num_input)
-            num_input = max(0, min(num_input, num_input - self.start))
-        if self.limit > 0:
-            inputs = islice(inputs, self.limit)
-            num_input = min(num_input, self.limit)
-        batch = ichunked(inputs, self.batch)
-        num_batch = math.ceil(num_input / self.batch)
-        return batch, num_batch, num_input
-
-
 class LineFileWrapper:
-    def __init__(self, opt: FileOption):
+    def __init__(self, opt: FileOption | None):
         self.opt: FileOption = opt
         self.fp: IOBase | None = None
 
@@ -152,16 +133,35 @@ class LineFileWrapper:
             self.fp.close()
 
     def __enter__(self):
-        self.fp = open_file(self.opt.home / self.opt.name)
+        if not self.opt:
+            return None
+        self.open(strict=self.opt.strict)
         return self
 
+    def open(self, strict: bool = False):
+        path = self.opt.home / self.opt.name
+        if path.exists() and path.is_file():
+            self.fp = open_file(
+                path,
+                mode=self.opt.mode,
+                encoding=None if "b" in self.opt.mode else self.opt.encoding
+            )
+        if strict:
+            assert self.usable(), f"Could not open file: opt={self.opt}"
+
+    def usable(self):
+        return self.fp is not None and self.fp.readable()
+
     def __iter__(self):
-        for line in self.fp:
-            yield line.decode(self.opt.encoding).rstrip()
+        if self.fp is not None:
+            for line in self.fp:
+                if "b" in self.opt.mode:
+                    line = line.decode(self.opt.encoding)
+                yield line.strip()
 
 
 class MongoDBWrapper:
-    def __init__(self, opt: TableOption):
+    def __init__(self, opt: TableOption | None):
         self.opt: TableOption = opt
         self.cli: MongoClient | None = None
         self.db: pymongo.database.Database | None = None
@@ -172,10 +172,11 @@ class MongoDBWrapper:
             self.cli.close()
 
     def __enter__(self):
-        self.connect()
+        if not self.opt:
+            return None
+        self.open(strict=self.opt.strict)
         if self.opt.reset:
-            self.drop_table()
-        self.table = self.db.get_collection(f"{self.opt.name}")
+            self.reset()
         return self
 
     def __iter__(self):
@@ -188,31 +189,45 @@ class MongoDBWrapper:
         else:
             return 0
 
-    def connect(self):
+    def open(self, strict: bool = False):
         assert len(self.opt.home.parts) >= 2, f"Invalid MongoDB host: {self.opt.home}"
         db_addr, db_name = self.opt.home.parts[:2]
         self.cli = MongoClient(f"mongodb://{db_addr}/?timeoutMS={self.opt.timeout}")
         self.db = self.cli.get_database(db_name)
-        assert self.is_connected(), f"Could not connect to MongoDB: opt={self.opt}"
+        self.table = self.db.get_collection(f"{self.opt.name}")
+        if strict:
+            assert self.usable(), f"Could not connect to MongoDB: opt={self.opt}"
 
-    def is_connected(self):
+    def usable(self):
         try:
             res = self.db.command("ping")
         except pymongo.errors.ServerSelectionTimeoutError:
             res = {"ok": 0, "exception": "ServerSelectionTimeoutError"}
         return res.get("ok", 0) > 0
 
-    def drop_table(self):
+    def reset(self):
         logger.info(f"Drop an existing table: {self.opt}")
         self.db.drop_collection(f"{self.opt.name}")
 
 
 class ElasticSearchWrapper:
-    def __init__(self, opt: IndexOption):
+    def __init__(self, opt: IndexOption | None):
         self.opt: IndexOption = opt
         self.cli: Elasticsearch | None = None
 
-    def __enter__(self) -> Elasticsearch:
+    def __exit__(self, *exc_info):
+        if self.cli:
+            self.cli.close()
+
+    def __enter__(self):
+        if not self.opt:
+            return None
+        self.open(strict=self.opt.strict)
+        if self.opt.reset:
+            self.reset()
+        return self
+
+    def open(self, strict: bool = False):
         self.cli = Elasticsearch(
             hosts=f"http://{self.opt.home}",
             basic_auth=(self.opt.user, self.opt.pswd),
@@ -220,10 +235,71 @@ class ElasticSearchWrapper:
             retry_on_timeout=self.opt.retrial > 0,
             max_retries=self.opt.retrial,
         )
-        return self.cli
+        if strict:
+            assert self.usable(), f"Could not connect to ElasticSearch: opt={self.opt}"
 
-    def __exit__(self, *exc_info):
-        self.cli.close()
+    def usable(self):
+        return self.cli and self.cli.ping()
+
+    def reset(self):
+        if self.cli.indices.exists(index=self.opt.name):
+            logger.info(f"Drop an existing index: {self.opt}")
+            self.cli.indices.delete(index=self.opt.name)
+        self.cli.indices.create(index=self.opt.name, **self.opt.create_args)
+        logger.info(f"Created a new index: {self.opt}")
+        logger.info(f"- option: keys={list(self.opt.create_args.keys())}")
+
+    def refresh(self, verbose: bool = False):
+        self.cli.indices.refresh(index=self.opt.name)
+        if verbose:
+            res = self.cli.cat.indices(index=self.opt.name, v=True)
+            if res.meta.status == 200:
+                logger.info(hr('-'))
+                for line in res.body.strip().splitlines():
+                    logger.info(line)
+                logger.info(hr('-'))
+
+    def __len__(self):
+        self.cli.indices.refresh(index=self.opt.name)
+        if self.cli is not None:
+            res = self.cli.cat.count(index=self.opt.name, format="json")
+            if res.meta.status == 200 and len(res.body) > 0 and "count" in res.body[0]:
+                return int(res.body[0]["count"])
+        return 0
+
+
+@dataclass
+class DataOption(OptionData):
+    start: int = field(default=0)
+    limit: int = field(default=-1)
+    batch: int = field(default=1)
+    inter: int = field(default=10000)
+    total: int = field(default=-1)
+    file: FileOption | None = field(default=None)
+    table: TableOption | None = field(default=None)
+    index: IndexOption | None = field(default=None)
+
+    @staticmethod
+    def safe_dict(x: str | dict) -> dict:
+        if isinstance(x, dict):
+            return x
+        else:
+            return json.loads(x) if x.strip().startswith('{') else {}
+
+    def make_batches(self, inputs: LineFileWrapper | MongoDBWrapper, num_input: int = 0):
+        assert inputs and inputs.usable(), f"Invalid inputs: (opt={inputs.opt})"
+        inputs = map(DataOption.safe_dict, inputs)
+        if isinstance(inputs, MongoDBWrapper):
+            num_input = len(inputs)
+        if self.start > 0:
+            inputs = islice(inputs, self.start, num_input)
+            num_input = max(0, min(num_input, num_input - self.start))
+        if self.limit > 0:
+            inputs = islice(inputs, self.limit)
+            num_input = min(num_input, self.limit)
+        batch = ichunked(inputs, self.batch)
+        num_batch = math.ceil(num_input / self.batch)
+        return batch, num_batch, num_input
 
 
 @dataclass
