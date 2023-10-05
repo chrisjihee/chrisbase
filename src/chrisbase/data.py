@@ -9,7 +9,7 @@ from datetime import timedelta
 from io import IOBase
 from itertools import islice
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Mapping, Any
 
 import pandas as pd
 import pymongo.collection
@@ -108,16 +108,17 @@ class IndexOption(OptionData):
     strict: bool = field(default=False)
     timeout: int = field(default=10)
     retrial: int = field(default=3)
-    create: str | Path = field(default="index_create_args.json")
+    create: str | Path | None = field(default=None)
     create_args = None
 
     def __post_init__(self):
-        self.create = Path(self.create)
         self.create_args = {}
-        if self.create.exists():
-            content = self.create.read_text()
-            if content:
-                self.create_args = json.loads(content)
+        if self.create:
+            self.create = Path(self.create)
+            if self.create.exists() and self.create.is_file():
+                content = self.create.read_text()
+                if content:
+                    self.create_args = json.loads(content)
 
     def __repr__(self):
         return f"{self.user}@{self.home}/{self.name}"
@@ -126,6 +127,7 @@ class IndexOption(OptionData):
 class LineFileWrapper:
     def __init__(self, opt: FileOption | None):
         self.opt: FileOption = opt
+        self.path: Path | None = None
         self.fp: IOBase | None = None
 
     def __exit__(self, *exc_info):
@@ -139,10 +141,10 @@ class LineFileWrapper:
         return self
 
     def open(self, strict: bool = False):
-        path = self.opt.home / self.opt.name
-        if path.exists() and path.is_file():
+        self.path = self.opt.home / self.opt.name
+        if self.path.exists() and self.path.is_file():
             self.fp = open_file(
-                path,
+                self.path,
                 mode=self.opt.mode,
                 encoding=None if "b" in self.opt.mode else self.opt.encoding
             )
@@ -208,6 +210,9 @@ class MongoDBWrapper:
     def reset(self):
         logger.info(f"Drop an existing table: {self.opt}")
         self.db.drop_collection(f"{self.opt.name}")
+
+    def count(self, query: Mapping[str, Any]):
+        self.table.count_documents(query, limit=1)
 
 
 class ElasticSearchWrapper:
@@ -286,11 +291,8 @@ class DataOption(OptionData):
         else:
             return json.loads(x) if x.strip().startswith('{') else {}
 
-    def make_batches(self, inputs: LineFileWrapper | MongoDBWrapper, num_input: int = 0):
-        assert inputs and inputs.usable(), f"Invalid inputs: (opt={inputs.opt})"
+    def input_batches(self, inputs, num_input: int):
         inputs = map(DataOption.safe_dict, inputs)
-        if isinstance(inputs, MongoDBWrapper):
-            num_input = len(inputs)
         if self.start > 0:
             inputs = islice(inputs, self.start, num_input)
             num_input = max(0, min(num_input, num_input - self.start))
