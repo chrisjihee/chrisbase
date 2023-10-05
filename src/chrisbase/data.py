@@ -143,8 +143,8 @@ class DataOption(OptionData):
 
 
 class LineFileWrapper:
-    def __init__(self, opt: FileOption | None):
-        self.opt: FileOption | None = opt
+    def __init__(self, opt: FileOption):
+        self.opt: FileOption = opt
         self.fp: IOBase | None = None
 
     def __exit__(self, *exc_info):
@@ -152,20 +152,17 @@ class LineFileWrapper:
             self.fp.close()
 
     def __enter__(self):
-        if not self.opt:
-            return None
         self.fp = open_file(self.opt.home / self.opt.name)
         return self
 
     def __iter__(self):
-        if self.fp:
-            for line in self.fp:
-                yield line.decode(self.opt.encoding).rstrip()
+        for line in self.fp:
+            yield line.decode(self.opt.encoding).rstrip()
 
 
 class MongoDBWrapper:
-    def __init__(self, opt: TableOption | None):
-        self.opt: TableOption | None = opt
+    def __init__(self, opt: TableOption):
+        self.opt: TableOption = opt
         self.cli: MongoClient | None = None
         self.db: pymongo.database.Database | None = None
         self.table: pymongo.collection.Collection | None = None
@@ -175,8 +172,6 @@ class MongoDBWrapper:
             self.cli.close()
 
     def __enter__(self):
-        if not self.opt:
-            return None
         self.connect()
         if self.opt.reset:
             self.drop_table()
@@ -213,8 +208,8 @@ class MongoDBWrapper:
 
 
 class ElasticSearchWrapper:
-    def __init__(self, opt: IndexOption | None):
-        self.opt: IndexOption | None = opt
+    def __init__(self, opt: IndexOption):
+        self.opt: IndexOption = opt
         self.cli: Elasticsearch | None = None
 
     def __enter__(self) -> Elasticsearch:
