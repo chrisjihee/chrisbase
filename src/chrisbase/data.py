@@ -9,7 +9,7 @@ from datetime import timedelta
 from io import IOBase
 from itertools import islice
 from pathlib import Path
-from typing import List, Optional, Mapping, Any
+from typing import List, Optional, Mapping, Any, Iterable
 
 import pandas as pd
 import pymongo.collection
@@ -152,7 +152,10 @@ class LineFileWrapper:
             assert self.usable(), f"Could not open file: opt={self.opt}"
 
     def usable(self) -> bool:
-        return self.fp is not None and self.fp.readable()
+        return all([
+            self.fp is not None,
+            (self.fp.writable() if "w" in self.opt.mode else self.fp.readable())
+        ])
 
     def __iter__(self):
         if self.fp is not None:
@@ -274,7 +277,15 @@ class ElasticSearchWrapper:
 
 
 @dataclass
-class DataOption(OptionData):
+class InputSource:
+    wrapper: MongoDBWrapper | LineFileWrapper = field()
+    batches: Iterable[dict] = field()
+    num_batch: int = field()
+    num_input: int = field()
+
+
+@dataclass
+class InputOption(OptionData):
     start: int = field(default=0)
     limit: int = field(default=-1)
     batch: int = field(default=1)
@@ -291,17 +302,45 @@ class DataOption(OptionData):
         else:
             return json.loads(x) if x.strip().startswith('{') else {}
 
-    def input_batches(self, inputs, num_input: int):
-        inputs = map(DataOption.safe_dict, inputs)
+    def load_batches(self, inputs, num_input: int):
+        inputs = map(InputOption.safe_dict, inputs)
         if self.start > 0:
             inputs = islice(inputs, self.start, num_input)
             num_input = max(0, min(num_input, num_input - self.start))
         if self.limit > 0:
             inputs = islice(inputs, self.limit)
             num_input = min(num_input, self.limit)
-        batch = ichunked(inputs, self.batch)
+        batches = ichunked(inputs, self.batch)
         num_batch = math.ceil(num_input / self.batch)
-        return batch, num_batch, num_input
+        return {
+            "batches": batches,
+            "num_batch": num_batch,
+            "num_input": num_input,
+        }
+
+    def select_inputs(self, *wrappers: MongoDBWrapper | LineFileWrapper):
+        for wrapper in wrappers:
+            if wrapper and wrapper.usable():
+                return InputSource(wrapper=wrapper, **self.load_batches(wrapper, self.total))
+        assert False, "No input source"
+
+
+@dataclass
+class OutputSource:
+    wrapper: MongoDBWrapper | LineFileWrapper = field()
+
+
+@dataclass
+class OutputOption(OptionData):
+    file: FileOption | None = field(default=None)
+    table: TableOption | None = field(default=None)
+    index: IndexOption | None = field(default=None)
+
+    def select_outputs(self, *wrappers: MongoDBWrapper | LineFileWrapper):
+        for wrapper in wrappers:
+            if wrapper and wrapper.usable():
+                return OutputSource(wrapper=wrapper)
+        assert False, "No input source"
 
 
 @dataclass
