@@ -142,6 +142,7 @@ class LineFileWrapper:
 
     def open(self, strict: bool = False):
         self.path = self.opt.home / self.opt.name
+        self.path.touch()
         if self.path.exists() and self.path.is_file():
             self.fp = open_file(
                 self.path,
@@ -152,10 +153,12 @@ class LineFileWrapper:
             assert self.usable(), f"Could not open file: opt={self.opt}"
 
     def usable(self) -> bool:
-        return all([
-            self.fp is not None,
-            (self.fp.writable() if "w" in self.opt.mode else self.fp.readable())
-        ])
+        if self.fp is not None:
+            if "r" in self.opt.mode:
+                return self.fp.readable()
+            elif "w" in self.opt.mode:
+                return self.fp.writable()
+        return False
 
     def __iter__(self):
         if self.fp is not None:
@@ -278,7 +281,7 @@ class ElasticSearchWrapper:
 
 @dataclass
 class Batches(TypedData):
-    batches: Iterable[Iterable] = field()
+    batches: Iterable[Iterable]
     num_batch: int = field()
     num_input: int = field()
 
@@ -286,6 +289,11 @@ class Batches(TypedData):
 @dataclass
 class InputSource(Batches):
     wrapper: MongoDBWrapper | LineFileWrapper = field()
+
+    @staticmethod
+    def from_batches(inputs: Batches, wrapper: MongoDBWrapper | LineFileWrapper):
+        return InputSource(wrapper=wrapper,
+                           batches=inputs.batches, num_batch=inputs.num_batch, num_input=inputs.num_input)
 
 
 @dataclass
@@ -316,12 +324,19 @@ class InputOption(OptionData):
             num_input = min(num_input, self.limit)
         batches = ichunked(inputs, self.batch)
         num_batch = math.ceil(num_input / self.batch)
-        return Batches(batches=batches, num_batch=num_batch, num_input=num_input)
+        return Batches(
+            batches=batches,
+            num_batch=num_batch,
+            num_input=num_input,
+        )
 
     def select_inputs(self, *wrappers: MongoDBWrapper | LineFileWrapper):
         for wrapper in wrappers:
             if wrapper and wrapper.usable():
-                return InputSource(wrapper=wrapper, **self.load_batches(wrapper, self.total).to_dict())
+                return InputSource.from_batches(
+                    inputs=self.load_batches(wrapper, self.total),
+                    wrapper=wrapper,
+                )
         assert False, "No input source"
 
 
@@ -338,9 +353,9 @@ class OutputOption(OptionData):
 
     def select_outputs(self, *wrappers: MongoDBWrapper | LineFileWrapper):
         for wrapper in wrappers:
-            if wrapper and wrapper.usable():
+            if wrapper is not None and wrapper.usable():
                 return OutputSource(wrapper=wrapper)
-        assert False, "No input source"
+        assert False, "No output source"
 
 
 @dataclass
