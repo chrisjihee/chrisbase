@@ -151,7 +151,7 @@ class LineFileWrapper:
         if strict:
             assert self.usable(), f"Could not open file: opt={self.opt}"
 
-    def usable(self):
+    def usable(self) -> bool:
         return self.fp is not None and self.fp.readable()
 
     def __iter__(self):
@@ -185,7 +185,7 @@ class MongoDBWrapper:
         if self.table is not None:
             return self.table.find(self.opt.find).sort(self.opt.sort)
 
-    def __len__(self):
+    def __len__(self) -> int:
         if self.table is not None:
             return self.table.count_documents(self.opt.find)
         else:
@@ -200,7 +200,7 @@ class MongoDBWrapper:
         if strict:
             assert self.usable(), f"Could not connect to MongoDB: opt={self.opt}"
 
-    def usable(self):
+    def usable(self) -> bool:
         try:
             res = self.db.command("ping")
         except pymongo.errors.ServerSelectionTimeoutError:
@@ -211,8 +211,8 @@ class MongoDBWrapper:
         logger.info(f"Drop an existing table: {self.opt}")
         self.db.drop_collection(f"{self.opt.name}")
 
-    def count(self, query: Mapping[str, Any]):
-        self.table.count_documents(query, limit=1)
+    def count(self, query: Mapping[str, Any]) -> int:
+        return self.table.count_documents(query, limit=1)
 
 
 class ElasticSearchWrapper:
@@ -243,7 +243,7 @@ class ElasticSearchWrapper:
         if strict:
             assert self.usable(), f"Could not connect to ElasticSearch: opt={self.opt}"
 
-    def usable(self):
+    def usable(self) -> bool:
         return self.cli and self.cli.ping()
 
     def reset(self):
@@ -264,7 +264,7 @@ class ElasticSearchWrapper:
                     logger.info(line)
                 logger.info(hr('-'))
 
-    def __len__(self):
+    def __len__(self) -> int:
         self.cli.indices.refresh(index=self.opt.name)
         if self.cli is not None:
             res = self.cli.cat.count(index=self.opt.name, format="json")
