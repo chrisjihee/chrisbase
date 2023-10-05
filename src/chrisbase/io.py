@@ -1,3 +1,5 @@
+import bz2
+import gzip
 import json
 import logging
 import os
@@ -7,12 +9,12 @@ import subprocess
 import sys
 import traceback
 import warnings
-from contextlib import contextmanager
+from io import IOBase
 from ipaddress import IPv4Address
 from itertools import chain
 from pathlib import Path
 from time import sleep
-from typing import IO, Any, Iterator, Iterable
+from typing import Iterable
 
 import netifaces
 import pandas as pd
@@ -395,36 +397,15 @@ def load_json(path: str | Path, **kwargs) -> dict:
         raise RuntimeError(f"Please validate json file!\n- path: {path}\n- type: {type(e).__qualname__}\n- detail: {e}")
 
 
-@contextmanager
-def open_compressed(path: str | Path, mode: str = 'rb', **kwargs) -> Iterator[IO[Any]]:
+def open_file(path: str | Path, mode: str = "rb", **kwargs) -> IOBase:
     file = Path(path)
-    assert file.exists() and file.is_file(), f"file={file}"
-    if file.suffix == '.gz':
-        try:
-            import gzip
-            with gzip.open(file, mode, **kwargs) as fp:
-                yield fp
-        finally:
-            fp.close()
-    elif file.suffix == '.bz2':
-        try:
-            import bz2
-            with bz2.open(file, mode, **kwargs) as fp:
-                yield fp
-        finally:
-            fp.close()
+    assert file.exists() and file.is_file(), f"No file: {file}"
+    if file.suffix == ".gz":
+        return gzip.open(file, mode, **kwargs)
+    elif file.suffix == ".bz2":
+        return bz2.open(file, mode, **kwargs)
     else:
-        try:
-            with file.open(mode, **kwargs) as fp:
-                yield fp
-        finally:
-            fp.close()
-
-
-def iter_compressed(path: str | Path, mode: str = 'rb', **kwargs) -> Iterator[str]:
-    with open_compressed(path, mode, **kwargs) as fp:
-        for line in fp:
-            yield line.decode('utf-8').rstrip()
+        return file.open(mode, **kwargs)
 
 
 def save_json(obj: dict, path: str | Path, **kwargs):

@@ -1,13 +1,15 @@
 import json
 import logging
+import math
 import sys
 import warnings
 from dataclasses import dataclass, field
 from datetime import datetime
 from datetime import timedelta
+from io import IOBase
+from itertools import islice
 from pathlib import Path
-from typing import List
-from typing import Optional
+from typing import List, Optional
 
 import pandas as pd
 import pymongo.collection
@@ -16,9 +18,10 @@ import pymongo.errors
 import typer
 from dataclasses_json import DataClassJsonMixin
 from elasticsearch import Elasticsearch
+from more_itertools import ichunked
 from pymongo import MongoClient
 
-from chrisbase.io import get_hostname, get_hostaddr, running_file, first_or, cwd, hr, str_table, flush_or, make_parent_dir, get_ip_addrs, configure_unit_logger, configure_dual_logger
+from chrisbase.io import get_hostname, get_hostaddr, running_file, first_or, cwd, hr, str_table, flush_or, make_parent_dir, get_ip_addrs, configure_unit_logger, configure_dual_logger, open_file
 from chrisbase.time import now, str_delta
 from chrisbase.util import tupled, SP, NO, to_dataframe
 
@@ -65,6 +68,7 @@ class ArgumentGroupData(TypedData):
 class FileOption(OptionData):
     home: str | Path = field()
     name: str | Path = field()
+    encoding: str = field(default="utf-8")
 
     def __post_init__(self):
         self.home = Path(self.home)
@@ -78,6 +82,8 @@ class FileOption(OptionData):
 class TableOption(OptionData):
     home: str | Path = field()
     name: str | Path = field()
+    sort: str = field(default="_id")
+    find: dict = field(default_factory=dict)
     reset: bool = field(default=False)
     timeout: int = field(default=5000)
 
@@ -115,44 +121,98 @@ class IndexOption(OptionData):
 
 @dataclass
 class DataOption(OptionData):
-    file: FileOption | None = field(default=None)
-    table: TableOption | None = field(default=None)
-    index: IndexOption | None = field(default=None)
     total: int = field(default=-1)
     start: int = field(default=0)
     limit: int = field(default=-1)
     batch: int = field(default=1)
     inter: int = field(default=10000)
+    file: FileOption | None = field(default=None)
+    table: TableOption | None = field(default=None)
+    index: IndexOption | None = field(default=None)
+
+    def make_batches(self, inputs, num_input):
+        if self.start > 0:
+            inputs = islice(inputs, self.start, num_input)
+            num_input = max(0, min(num_input, num_input - self.start))
+        if self.limit > 0:
+            inputs = islice(inputs, self.limit)
+            num_input = min(num_input, self.limit)
+        batch = ichunked(inputs, self.batch)
+        num_batch = math.ceil(num_input / self.batch)
+        return batch, num_batch, num_input
 
 
-class MongoDBTable:
+class LineFileWrapper:
+    def __init__(self, opt: FileOption | None):
+        self.opt: FileOption | None = opt
+        self.fp: IOBase | None = None
+
+    def __exit__(self, *exc_info):
+        if self.fp:
+            self.fp.close()
+
+    def __enter__(self):
+        if not self.opt:
+            return None
+        self.fp = open_file(self.opt.home / self.opt.name)
+        return self
+
+    def __iter__(self):
+        if self.fp:
+            for line in self.fp:
+                yield line.decode(self.opt.encoding).rstrip()
+
+
+class MongoDBWrapper:
     def __init__(self, opt: TableOption | None):
         self.opt: TableOption | None = opt
         self.cli: MongoClient | None = None
-
-    def __enter__(self) -> pymongo.collection.Collection | None:
-        if not self.opt:
-            return None
-
-        assert len(self.opt.home.parts) >= 2, f"Invalid MongoDB host: {self.opt.home}"
-        db_addr, db_name = self.opt.home.parts[:2]
-        self.cli = MongoClient(f"mongodb://{db_addr}/?timeoutMS={self.opt.timeout}")
-        database: pymongo.database.Database = self.cli.get_database(db_name)
-
-        try:
-            res = database.command("ping")
-        except pymongo.errors.ServerSelectionTimeoutError:
-            res = {"ok": 0, "exception": "ServerSelectionTimeoutError"}
-        assert res.get("ok", 0) > 0, f"Could not connect to MongoDB: opt={self.opt}, res={res}"
-
-        return database.get_collection(f"{self.opt.name}")
+        self.db: pymongo.database.Database | None = None
+        self.table: pymongo.collection.Collection | None = None
 
     def __exit__(self, *exc_info):
         if self.cli:
             self.cli.close()
 
+    def __enter__(self):
+        if not self.opt:
+            return None
+        self.connect()
+        if self.opt.reset:
+            self.drop_table()
+        self.table = self.db.get_collection(f"{self.opt.name}")
+        return self
 
-class ElasticSearchClient:
+    def __iter__(self):
+        if self.table is not None:
+            return self.table.find(self.opt.find).sort(self.opt.sort)
+
+    def __len__(self):
+        if self.table is not None:
+            return self.table.count_documents(self.opt.find)
+        else:
+            return 0
+
+    def connect(self):
+        assert len(self.opt.home.parts) >= 2, f"Invalid MongoDB host: {self.opt.home}"
+        db_addr, db_name = self.opt.home.parts[:2]
+        self.cli = MongoClient(f"mongodb://{db_addr}/?timeoutMS={self.opt.timeout}")
+        self.db = self.cli.get_database(db_name)
+        assert self.is_connected(), f"Could not connect to MongoDB: opt={self.opt}"
+
+    def is_connected(self):
+        try:
+            res = self.db.command("ping")
+        except pymongo.errors.ServerSelectionTimeoutError:
+            res = {"ok": 0, "exception": "ServerSelectionTimeoutError"}
+        return res.get("ok", 0) > 0
+
+    def drop_table(self):
+        logger.info(f"Drop an existing table: {self.opt}")
+        self.db.drop_collection(f"{self.opt.name}")
+
+
+class ElasticSearchWrapper:
     def __init__(self, opt: IndexOption | None):
         self.opt: IndexOption | None = opt
         self.cli: Elasticsearch | None = None
