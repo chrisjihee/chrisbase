@@ -10,11 +10,13 @@ from typing import List
 from typing import Optional
 
 import pandas as pd
+import pymongo.collection
+import pymongo.database
+import pymongo.errors
 import typer
 from dataclasses_json import DataClassJsonMixin
 from elasticsearch import Elasticsearch
 from pymongo import MongoClient
-from pymongo.collection import Collection
 
 from chrisbase.io import get_hostname, get_hostaddr, running_file, first_or, cwd, hr, str_table, flush_or, make_parent_dir, get_ip_addrs, configure_unit_logger, configure_dual_logger
 from chrisbase.time import now, str_delta
@@ -60,65 +62,113 @@ class ArgumentGroupData(TypedData):
 
 
 @dataclass
-class TableOption(OptionData):
-    db_host: str = field()
-    db_name: str = field()
-    tab_name: str = field()
-    tab_reset: bool = field(default=False)
+class FileOption(OptionData):
+    home: str | Path = field()
+    name: str | Path = field()
+
+    def __post_init__(self):
+        self.home = Path(self.home)
+        self.name = Path(self.name)
 
     def __repr__(self):
-        return f"{self.db_host}/{self.db_name}/{self.tab_name}"
+        return f"{self.home}/{self.name}"
+
+
+@dataclass
+class TableOption(OptionData):
+    home: str | Path = field()
+    name: str | Path = field()
+    reset: bool = field(default=False)
+    timeout: int = field(default=5000)
+
+    def __post_init__(self):
+        self.home = Path(self.home)
+        self.name = Path(self.name)
+
+    def __repr__(self):
+        return f"{self.home}/{self.name}"
 
 
 @dataclass
 class IndexOption(OptionData):
-    host: str = field()
+    home: str = field()
+    name: str = field()
     user: str = field()
     pswd: str = field()
-    name: str = field()
     reset: bool = field(default=False)
-    create: str | Path = field(default="index_create_opt.json")
-    create_opt = None
+    timeout: int = field(default=10)
+    retrial: int = field(default=3)
+    create: str | Path = field(default="index_create_args.json")
+    create_args = None
 
     def __post_init__(self):
         self.create = Path(self.create)
-        self.create_opt = {}
+        self.create_args = {}
         if self.create.exists():
             content = self.create.read_text()
             if content:
-                self.create_opt = json.loads(content)
+                self.create_args = json.loads(content)
 
     def __repr__(self):
-        return f"{self.user}@{self.host}/{self.name}"
+        return f"{self.user}@{self.home}/{self.name}"
+
+
+@dataclass
+class DataOption(OptionData):
+    file: FileOption | None = field(default=None)
+    table: TableOption | None = field(default=None)
+    index: IndexOption | None = field(default=None)
+    total: int = field(default=-1)
+    start: int = field(default=0)
+    limit: int = field(default=-1)
+    batch: int = field(default=1)
+    inter: int = field(default=10000)
 
 
 class MongoDBTable:
-    def __init__(self, opt: TableOption):
-        self.client = MongoClient(f"mongodb://{opt.db_host}")
-        self.table = self.client[opt.db_name][opt.tab_name]
+    def __init__(self, opt: TableOption | None):
+        self.opt: TableOption | None = opt
+        self.cli: MongoClient | None = None
 
-    def __enter__(self) -> Collection:
-        return self.table
+    def __enter__(self) -> pymongo.collection.Collection | None:
+        if not self.opt:
+            return None
+
+        assert len(self.opt.home.parts) >= 2, f"Invalid MongoDB host: {self.opt.home}"
+        db_addr, db_name = self.opt.home.parts[:2]
+        self.cli = MongoClient(f"mongodb://{db_addr}/?timeoutMS={self.opt.timeout}")
+        database: pymongo.database.Database = self.cli.get_database(db_name)
+
+        try:
+            res = database.command("ping")
+        except pymongo.errors.ServerSelectionTimeoutError:
+            res = {"ok": 0, "exception": "ServerSelectionTimeoutError"}
+        assert res.get("ok", 0) > 0, f"Could not connect to MongoDB: opt={self.opt}, res={res}"
+
+        return database.get_collection(f"{self.opt.name}")
 
     def __exit__(self, *exc_info):
-        self.client.close()
+        if self.cli:
+            self.cli.close()
 
 
 class ElasticSearchClient:
-    def __init__(self, opt: IndexOption):
-        self.client = Elasticsearch(
-            hosts=f"http://{opt.host}",
-            request_timeout=30,
-            max_retries=10,
-            retry_on_timeout=True,
-            basic_auth=(opt.user, opt.pswd),
-        )
+    def __init__(self, opt: IndexOption | None):
+        self.opt: IndexOption | None = opt
+        self.cli: Elasticsearch | None = None
 
     def __enter__(self) -> Elasticsearch:
-        return self.client
+        self.cli = Elasticsearch(
+            hosts=f"http://{self.opt.home}",
+            basic_auth=(self.opt.user, self.opt.pswd),
+            request_timeout=self.opt.timeout,
+            retry_on_timeout=self.opt.retrial > 0,
+            max_retries=self.opt.retrial,
+        )
+        return self.cli
 
     def __exit__(self, *exc_info):
-        self.client.close()
+        self.cli.close()
 
 
 @dataclass
