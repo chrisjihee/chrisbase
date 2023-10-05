@@ -277,11 +277,15 @@ class ElasticSearchWrapper:
 
 
 @dataclass
-class InputSource:
-    wrapper: MongoDBWrapper | LineFileWrapper = field()
-    batches: Iterable[dict] = field()
+class Batches(TypedData):
+    batches: Iterable[Iterable] = field()
     num_batch: int = field()
     num_input: int = field()
+
+
+@dataclass
+class InputSource(Batches):
+    wrapper: MongoDBWrapper | LineFileWrapper = field()
 
 
 @dataclass
@@ -302,7 +306,7 @@ class InputOption(OptionData):
         else:
             return json.loads(x) if x.strip().startswith('{') else {}
 
-    def load_batches(self, inputs, num_input: int):
+    def load_batches(self, inputs, num_input: int) -> Batches:
         inputs = map(InputOption.safe_dict, inputs)
         if self.start > 0:
             inputs = islice(inputs, self.start, num_input)
@@ -312,16 +316,12 @@ class InputOption(OptionData):
             num_input = min(num_input, self.limit)
         batches = ichunked(inputs, self.batch)
         num_batch = math.ceil(num_input / self.batch)
-        return {
-            "batches": batches,
-            "num_batch": num_batch,
-            "num_input": num_input,
-        }
+        return Batches(batches=batches, num_batch=num_batch, num_input=num_input)
 
     def select_inputs(self, *wrappers: MongoDBWrapper | LineFileWrapper):
         for wrapper in wrappers:
             if wrapper and wrapper.usable():
-                return InputSource(wrapper=wrapper, **self.load_batches(wrapper, self.total))
+                return InputSource(wrapper=wrapper, **self.load_batches(wrapper, self.total).to_dict())
         assert False, "No input source"
 
 
