@@ -9,7 +9,7 @@ from datetime import timedelta
 from io import IOBase
 from itertools import islice
 from pathlib import Path
-from typing import List, Optional, Mapping, Any, Iterable
+from typing import List, Optional, Mapping, Any, Iterable, Tuple
 
 import pandas as pd
 import pymongo.collection
@@ -84,7 +84,7 @@ class FileOption(OptionData):
 class TableOption(OptionData):
     home: str | Path = field()
     name: str | Path = field()
-    sort: str = field(default="_id")
+    sort: str | List[Tuple[str, int] | str] = field(default="_id")
     find: dict = field(default_factory=dict)
     reset: bool = field(default=False)
     strict: bool = field(default=False)
