@@ -188,14 +188,27 @@ class MongoDBWrapper:
         return self
 
     def __iter__(self):
-        if self.table is not None:
+        if self.table is not None and self.usable():
             return self.table.find(self.opt.find).sort(self.opt.sort)
 
     def __len__(self) -> int:
-        if self.table is not None:
+        if self.table is not None and self.usable():
             return self.table.count_documents(self.opt.find)
         else:
             return 0
+
+    def count(self, query: Mapping[str, Any]) -> int:
+        if self.table is not None and self.usable():
+            return self.table.count_documents(query, limit=1)
+        else:
+            return -1
+
+    def usable(self) -> bool:
+        try:
+            res = self.db.command("ping")
+        except pymongo.errors.ServerSelectionTimeoutError:
+            res = {"ok": 0, "exception": "ServerSelectionTimeoutError"}
+        return res.get("ok", 0) > 0
 
     def open(self, strict: bool = False):
         assert len(self.opt.home.parts) >= 2, f"Invalid MongoDB host: {self.opt.home}"
@@ -206,19 +219,10 @@ class MongoDBWrapper:
         if strict:
             assert self.usable(), f"Could not connect to MongoDB: opt={self.opt}"
 
-    def usable(self) -> bool:
-        try:
-            res = self.db.command("ping")
-        except pymongo.errors.ServerSelectionTimeoutError:
-            res = {"ok": 0, "exception": "ServerSelectionTimeoutError"}
-        return res.get("ok", 0) > 0
-
     def reset(self):
-        logger.info(f"Drop an existing table: {self.opt}")
-        self.db.drop_collection(f"{self.opt.name}")
-
-    def count(self, query: Mapping[str, Any]) -> int:
-        return self.table.count_documents(query, limit=1)
+        if self.usable():
+            logger.info(f"Drop an existing table: {self.opt}")
+            self.db.drop_collection(f"{self.opt.name}")
 
 
 class ElasticSearchWrapper:
