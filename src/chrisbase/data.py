@@ -144,7 +144,7 @@ class LineFileWrapper:
         if self.usable():
             return file_lines(self.path)
         else:
-            return 0
+            return -1
 
     def __iter__(self):
         if self.fp is not None:
@@ -197,15 +197,18 @@ class MongoDBWrapper:
         if self.table is not None and self.usable():
             return self.count(self.opt.find)
         else:
-            return 0
+            return -1
 
     def __iter__(self):
         if self.table is not None and self.usable():
             return self.table.find(self.opt.find).sort(self.opt.sort)
 
-    def count(self, query: Mapping[str, Any]) -> int:
+    def count(self, query: Mapping[str, Any], exact: bool = False) -> int:
         if self.table is not None and self.usable():
-            return self.table.count_documents(query, limit=1)
+            if exact:
+                return self.table.count_documents(query)
+            else:
+                return self.table.estimated_document_count()
         else:
             return -1
 
@@ -254,7 +257,7 @@ class ElasticSearchWrapper:
             res = self.cli.cat.count(index=self.opt.name, format="json")
             if res.meta.status == 200 and len(res.body) > 0 and "count" in res.body[0]:
                 return int(res.body[0]["count"])
-        return 0
+        return -1
 
     def open(self, strict: bool = False):
         self.cli = Elasticsearch(
