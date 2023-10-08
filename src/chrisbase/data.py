@@ -99,6 +99,7 @@ class TableOption(RewriterOption):
 
 @dataclass
 class IndexOption(RewriterOption):
+    window: int = field(default=10000)
     timeout: int = field(default=10)
     retrial: int = field(default=3)
     create: str | Path | None = field(default=None)
@@ -119,10 +120,17 @@ class GenericRewriter:
     def __init__(self, opt: RewriterOption | None):
         self.opt: RewriterOption = opt
 
-    def __exit__(self, *exc_info):
-        pass
-
     def __enter__(self):
+        if not self.opt:
+            return None
+        if self.open():
+            if self.opt.reset:
+                self.reset()
+        elif self.opt.strict:
+            assert self.usable(), f"Could not open source: opt={self.opt}"
+        return self
+
+    def __exit__(self, *exc_info):
         pass
 
     def __len__(self) -> int:
@@ -134,7 +142,7 @@ class GenericRewriter:
     def usable(self) -> bool:
         return False
 
-    def open(self, strict: bool = False):
+    def open(self) -> bool:
         raise NotImplementedError
 
     def reset(self):
@@ -160,14 +168,6 @@ class FileRewriter(GenericRewriter):
         if self.fp:
             self.fp.close()
 
-    def __enter__(self):
-        if not self.opt:
-            return None
-        self.open(strict=self.opt.strict)
-        if self.usable() and self.opt.reset:
-            self.reset()
-        return self
-
     def __len__(self) -> int:
         if self.usable():
             return file_lines(self.path)
@@ -182,14 +182,23 @@ class FileRewriter(GenericRewriter):
                 yield line.strip()
 
     def usable(self) -> bool:
-        if self.fp is not None:
-            if "r" in self.opt.mode:
-                return self.fp.readable()
-            elif "w" in self.opt.mode or "a" in self.opt.mode:
-                return self.fp.writable()
-        return False
+        return self.readable() or self.writable()
 
-    def open(self, strict: bool = False):
+    def readable(self) -> bool:
+        return (
+                self.fp is not None
+                and "r" in self.opt.mode
+                and self.fp.readable()
+        )
+
+    def writable(self) -> bool:
+        return (
+                self.fp is not None
+                and ("w" in self.opt.mode or "a" in self.opt.mode)
+                and self.fp.writable()
+        )
+
+    def open(self) -> bool:
         self.path = self.opt.home / self.opt.name
         self.path.touch()
         if self.path.exists() and self.path.is_file():
@@ -198,8 +207,7 @@ class FileRewriter(GenericRewriter):
                 mode=self.opt.mode,
                 encoding=None if "b" in self.opt.mode else self.opt.encoding
             )
-        if strict:
-            assert self.usable(), f"Could not open file: opt={self.opt}"
+        return self.usable()
 
     def reset(self):
         if self.usable():
@@ -219,39 +227,31 @@ class MongoRewriter(GenericRewriter):
         if self.cli:
             self.cli.close()
 
-    def __enter__(self):
-        if not self.opt:
-            return None
-        self.open(strict=self.opt.strict)
-        if self.usable() and self.opt.reset:
-            self.reset()
-        return self
-
     def __len__(self) -> int:
-        if self.table is not None and self.usable():
+        if self.usable():
             return self.count(self.opt.find)
         else:
             return -1
 
     def __iter__(self):
-        if self.table is not None and self.usable():
-            return self.table.find(self.opt.find).sort(self.opt.sort)
+        if self.usable():
+            for row in self.table.find(self.opt.find).sort(self.opt.sort):
+                yield row
 
     def usable(self) -> bool:
         try:
             res = self.db.command("ping")
         except pymongo.errors.ServerSelectionTimeoutError:
             res = {"ok": 0, "exception": "ServerSelectionTimeoutError"}
-        return res.get("ok", 0) > 0
+        return res.get("ok", 0) > 0 and self.table is not None
 
-    def open(self, strict: bool = False):
+    def open(self) -> bool:
         assert len(self.opt.home.parts) >= 2, f"Invalid MongoDB host: {self.opt.home}"
         db_addr, db_name = self.opt.home.parts[:2]
         self.cli = MongoClient(f"mongodb://{db_addr}/?timeoutMS={self.opt.timeout}")
         self.db = self.cli.get_database(db_name)
         self.table = self.db.get_collection(f"{self.opt.name}")
-        if strict:
-            assert self.usable(), f"Could not connect to MongoDB: opt={self.opt}"
+        return self.usable()
 
     def reset(self):
         if self.usable():
@@ -259,7 +259,7 @@ class MongoRewriter(GenericRewriter):
             self.db.drop_collection(f"{self.opt.name}")
 
     def count(self, query: Mapping[str, Any], exact: bool = False) -> int:
-        if self.table is not None and self.usable():
+        if self.usable():
             if exact:
                 return self.table.count_documents(query)
             else:
@@ -278,23 +278,23 @@ class ElasticRewriter(GenericRewriter):
         if self.cli:
             self.cli.close()
 
-    def __enter__(self):
-        if not self.opt:
-            return None
-        self.open(strict=self.opt.strict)
-        if self.usable() and self.opt.reset:
-            self.reset()
-        return self
-
     def __len__(self) -> int:
-        if self.cli is not None and self.usable():
+        if self.usable():
             self.refresh()
             res = self.cli.cat.count(index=self.opt.name, format="json")
             if res.meta.status == 200 and len(res.body) > 0 and "count" in res.body[0]:
                 return int(res.body[0]["count"])
         return -1
 
-    def open(self, strict: bool = False):
+    def __iter__(self):
+        if self.usable():
+            self.refresh()
+            res = self.cli.search(index=self.opt.name, size=self.opt.window)
+            if res.meta.status == 200:
+                for item in res.body["hits"]["hits"]:
+                    yield item["_source"]
+
+    def open(self) -> bool:
         self.cli = Elasticsearch(
             hosts=f"http://{self.opt.home}",
             basic_auth=(self.opt.user, self.opt.pswd),
@@ -302,8 +302,7 @@ class ElasticRewriter(GenericRewriter):
             retry_on_timeout=self.opt.retrial > 0,
             max_retries=self.opt.retrial,
         )
-        if strict:
-            assert self.usable(), f"Could not connect to ElasticSearch: opt={self.opt}"
+        return self.usable()
 
     def usable(self) -> bool:
         return self.cli and self.cli.ping()
@@ -320,12 +319,14 @@ class ElasticRewriter(GenericRewriter):
         self.cli.indices.refresh(index=self.opt.name if only_opt else None)
 
     def status(self, only_opt: bool = True):
-        res = self.cli.cat.indices(index=self.opt.name if only_opt else None, v=True)
-        if res.meta.status == 200:
-            logger.info(hr('-'))
-            for line in res.body.strip().splitlines():
-                logger.info(line)
-            logger.info(hr('-'))
+        if self.usable():
+            self.refresh()
+            res = self.cli.cat.indices(index=self.opt.name if only_opt else None, v=True)
+            if res.meta.status == 200:
+                logger.info(hr('-'))
+                for line in res.body.strip().splitlines():
+                    logger.info(line)
+                logger.info(hr('-'))
 
 
 @dataclass
