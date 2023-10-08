@@ -65,53 +65,47 @@ class ArgumentGroupData(TypedData):
 
 
 @dataclass
-class FileOption(OptionData):
+class RewriterOption(OptionData):
     home: str | Path = field()
     name: str | Path = field()
-    mode: str = field(default="rb")
+    user: str | None = field(default=None)
+    pswd: str | None = field(default=None)
+    reset: bool = field(default=False)
     strict: bool = field(default=False)
+
+    def __post_init__(self):
+        self.home = Path(self.home)
+        self.name = Path(self.name)
+
+    def __str__(self):
+        if self.user:
+            return f"{self.user}@{self.home}/{self.name}"
+        else:
+            return f"{self.home}/{self.name}"
+
+
+@dataclass
+class FileOption(RewriterOption):
+    mode: str = field(default="rb")
     encoding: str = field(default="utf-8")
 
-    def __post_init__(self):
-        self.home = Path(self.home)
-        self.name = Path(self.name)
-
-    def __repr__(self):
-        return f"{self.home}/{self.name}"
-
 
 @dataclass
-class TableOption(OptionData):
-    home: str | Path = field()
-    name: str | Path = field()
+class TableOption(RewriterOption):
     sort: str | List[Tuple[str, int] | str] = field(default="_id")
     find: dict = field(default_factory=dict)
-    reset: bool = field(default=False)
-    strict: bool = field(default=False)
     timeout: int = field(default=5000)
-
-    def __post_init__(self):
-        self.home = Path(self.home)
-        self.name = Path(self.name)
-
-    def __repr__(self):
-        return f"{self.home}/{self.name}"
 
 
 @dataclass
-class IndexOption(OptionData):
-    home: str = field()
-    name: str = field()
-    user: str = field()
-    pswd: str = field()
-    reset: bool = field(default=False)
-    strict: bool = field(default=False)
+class IndexOption(RewriterOption):
     timeout: int = field(default=10)
     retrial: int = field(default=3)
     create: str | Path | None = field(default=None)
     create_args = None
 
     def __post_init__(self):
+        super().__post_init__()
         self.create_args = {}
         if self.create:
             self.create = Path(self.create)
@@ -120,12 +114,44 @@ class IndexOption(OptionData):
                 if content:
                     self.create_args = json.loads(content)
 
-    def __repr__(self):
-        return f"{self.user}@{self.home}/{self.name}"
+
+class GenericRewriter:
+    def __init__(self, opt: RewriterOption | None):
+        self.opt: RewriterOption = opt
+
+    def __exit__(self, *exc_info):
+        pass
+
+    def __enter__(self):
+        pass
+
+    def __len__(self) -> int:
+        raise NotImplementedError
+
+    def __iter__(self):
+        raise NotImplementedError
+
+    def usable(self) -> bool:
+        return False
+
+    def open(self, strict: bool = False):
+        raise NotImplementedError
+
+    def reset(self):
+        raise NotImplementedError
+
+    @staticmethod
+    def first_usable(*rewriters: "GenericRewriter") -> "GenericRewriter":
+        for rewriter in rewriters:
+            if rewriter is not None and rewriter.usable():
+                return rewriter
+        assert False, (f"No usable rewriter among {len(rewriters)} rewriters: "
+                       f"{', '.join([type(x).__qualname__ for x in rewriters])}")
 
 
-class LineFileWrapper:
+class FileRewriter(GenericRewriter):
     def __init__(self, opt: FileOption | None):
+        super().__init__(opt=opt)
         self.opt: FileOption = opt
         self.path: Path | None = None
         self.fp: IOBase | None = None
@@ -138,6 +164,8 @@ class LineFileWrapper:
         if not self.opt:
             return None
         self.open(strict=self.opt.strict)
+        if self.usable() and self.opt.reset:
+            self.reset()
         return self
 
     def __len__(self) -> int:
@@ -153,6 +181,14 @@ class LineFileWrapper:
                     line = line.decode(self.opt.encoding)
                 yield line.strip()
 
+    def usable(self) -> bool:
+        if self.fp is not None:
+            if "r" in self.opt.mode:
+                return self.fp.readable()
+            elif "w" in self.opt.mode or "a" in self.opt.mode:
+                return self.fp.writable()
+        return False
+
     def open(self, strict: bool = False):
         self.path = self.opt.home / self.opt.name
         self.path.touch()
@@ -165,17 +201,15 @@ class LineFileWrapper:
         if strict:
             assert self.usable(), f"Could not open file: opt={self.opt}"
 
-    def usable(self) -> bool:
-        if self.fp is not None:
-            if "r" in self.opt.mode:
-                return self.fp.readable()
-            elif "w" in self.opt.mode:
-                return self.fp.writable()
-        return False
+    def reset(self):
+        if self.usable():
+            logger.info(f"Truncate the file content: {self.opt}")
+            self.fp.truncate(0)
 
 
-class MongoDBWrapper:
+class MongoRewriter(GenericRewriter):
     def __init__(self, opt: TableOption | None):
+        super().__init__(opt=opt)
         self.opt: TableOption = opt
         self.cli: MongoClient | None = None
         self.db: pymongo.database.Database | None = None
@@ -189,7 +223,7 @@ class MongoDBWrapper:
         if not self.opt:
             return None
         self.open(strict=self.opt.strict)
-        if self.opt.reset:
+        if self.usable() and self.opt.reset:
             self.reset()
         return self
 
@@ -202,15 +236,6 @@ class MongoDBWrapper:
     def __iter__(self):
         if self.table is not None and self.usable():
             return self.table.find(self.opt.find).sort(self.opt.sort)
-
-    def count(self, query: Mapping[str, Any], exact: bool = False) -> int:
-        if self.table is not None and self.usable():
-            if exact:
-                return self.table.count_documents(query)
-            else:
-                return self.table.estimated_document_count()
-        else:
-            return -1
 
     def usable(self) -> bool:
         try:
@@ -233,9 +258,19 @@ class MongoDBWrapper:
             logger.info(f"Drop an existing table: {self.opt}")
             self.db.drop_collection(f"{self.opt.name}")
 
+    def count(self, query: Mapping[str, Any], exact: bool = False) -> int:
+        if self.table is not None and self.usable():
+            if exact:
+                return self.table.count_documents(query)
+            else:
+                return self.table.estimated_document_count()
+        else:
+            return -1
 
-class ElasticSearchWrapper:
+
+class ElasticRewriter(GenericRewriter):
     def __init__(self, opt: IndexOption | None):
+        super().__init__(opt=opt)
         self.opt: IndexOption = opt
         self.cli: Elasticsearch | None = None
 
@@ -247,13 +282,13 @@ class ElasticSearchWrapper:
         if not self.opt:
             return None
         self.open(strict=self.opt.strict)
-        if self.opt.reset:
+        if self.usable() and self.opt.reset:
             self.reset()
         return self
 
     def __len__(self) -> int:
-        self.cli.indices.refresh(index=self.opt.name)
-        if self.cli is not None:
+        if self.cli is not None and self.usable():
+            self.refresh()
             res = self.cli.cat.count(index=self.opt.name, format="json")
             if res.meta.status == 200 and len(res.body) > 0 and "count" in res.body[0]:
                 return int(res.body[0]["count"])
@@ -281,83 +316,16 @@ class ElasticSearchWrapper:
         logger.info(f"Created a new index: {self.opt}")
         logger.info(f"- option: keys={list(self.opt.create_args.keys())}")
 
-    def refresh(self, verbose: bool = False):
-        self.cli.indices.refresh(index=self.opt.name)
-        if verbose:
-            res = self.cli.cat.indices(index=self.opt.name, v=True)
-            if res.meta.status == 200:
-                logger.info(hr('-'))
-                for line in res.body.strip().splitlines():
-                    logger.info(line)
-                logger.info(hr('-'))
+    def refresh(self, only_opt: bool = True):
+        self.cli.indices.refresh(index=self.opt.name if only_opt else None)
 
-
-@dataclass
-class Batches(TypedData):
-    batches: Iterable[Iterable]
-    num_batch: int = field()
-    num_input: int = field()
-
-
-@dataclass
-class InputSource(Batches):
-    wrapper: MongoDBWrapper | LineFileWrapper = field()
-
-    @staticmethod
-    def from_batches(inputs: Batches, wrapper: MongoDBWrapper | LineFileWrapper):
-        return InputSource(wrapper=wrapper,
-                           batches=inputs.batches, num_batch=inputs.num_batch, num_input=inputs.num_input)
-
-
-@dataclass
-class InputOption(OptionData):
-    start: int = field(default=0)
-    limit: int = field(default=-1)
-    batch: int = field(default=1)
-    inter: int = field(default=10000)
-    total: int = field(default=-1)
-    file: FileOption | None = field(default=None)
-    table: TableOption | None = field(default=None)
-    index: IndexOption | None = field(default=None)
-
-    @staticmethod
-    def safe_dict(x: str | dict) -> dict:
-        if isinstance(x, dict):
-            return x
-        else:
-            return json.loads(x) if x.strip().startswith('{') else {}
-
-    def load_batches(self, inputs, num_input: int) -> Batches:
-        inputs = map(InputOption.safe_dict, inputs)
-        if self.start > 0:
-            inputs = islice(inputs, self.start, num_input)
-            num_input = max(0, min(num_input, num_input - self.start))
-        if self.limit > 0:
-            inputs = islice(inputs, self.limit)
-            num_input = min(num_input, self.limit)
-        batches = ichunked(inputs, self.batch)
-        num_batch = math.ceil(num_input / self.batch)
-        return Batches(
-            batches=batches,
-            num_batch=num_batch,
-            num_input=num_input,
-        )
-
-    def select_input_batches(self, *wrappers: MongoDBWrapper | LineFileWrapper, num_input: int = -1):
-        if num_input > 0:
-            num_input = self.total
-        for wrapper in wrappers:
-            if wrapper and wrapper.usable():
-                return InputSource.from_batches(
-                    inputs=self.load_batches(wrapper, num_input),
-                    wrapper=wrapper,
-                )
-        assert False, "No input source"
-
-
-@dataclass
-class OutputSource:
-    wrapper: MongoDBWrapper | LineFileWrapper = field()
+    def status(self, only_opt: bool = True):
+        res = self.cli.cat.indices(index=self.opt.name if only_opt else None, v=True)
+        if res.meta.status == 200:
+            logger.info(hr('-'))
+            for line in res.body.strip().splitlines():
+                logger.info(line)
+            logger.info(hr('-'))
 
 
 @dataclass
@@ -366,11 +334,64 @@ class OutputOption(OptionData):
     table: TableOption | None = field(default=None)
     index: IndexOption | None = field(default=None)
 
-    def select_output_source(self, *wrappers: MongoDBWrapper | LineFileWrapper):
-        for wrapper in wrappers:
-            if wrapper is not None and wrapper.usable():
-                return OutputSource(wrapper=wrapper)
-        assert False, "No output source"
+
+@dataclass
+class InputOption(OutputOption):
+    start: int = field(default=0)
+    limit: int = field(default=-1)
+    batch: int = field(default=1)
+    inter: int = field(default=10000)
+    # total: int = field(default=-1)
+    file: FileOption | None = field(default=None)
+    table: TableOption | None = field(default=None)
+    index: IndexOption | None = field(default=None)
+
+    @dataclass
+    class InputItems:
+        total: int
+
+        @property
+        def items(self):
+            if isinstance(self, InputOption.SingleItems):
+                return self.singles
+            elif isinstance(self, InputOption.BatchItems):
+                return self.batches
+            else:
+                assert False, f"Invalid type of InputItems: {type(self).__name__}"
+
+    @dataclass
+    class SingleItems(InputItems):
+        singles: Iterable
+
+    @dataclass
+    class BatchItems(InputItems):
+        batches: Iterable[Iterable]
+
+    def ready_inputs(self, inputs: Iterable, total: int) -> "InputOption.SingleItems | InputOption.BatchItems":
+        inputs = map(self.safe_dict, inputs)
+        if self.start > 0:
+            inputs = islice(inputs, self.start, total)
+            total = max(0, min(total, total - self.start))
+        if self.limit > 0:
+            inputs = islice(inputs, self.limit)
+            total = min(total, self.limit)
+        if self.batch <= 1:
+            return InputOption.SingleItems(
+                total=total,
+                singles=inputs,
+            )
+        else:
+            return InputOption.BatchItems(
+                total=math.ceil(total / self.batch),
+                batches=ichunked(inputs, self.batch),
+            )
+
+    @staticmethod
+    def safe_dict(x: str | dict) -> dict:
+        if isinstance(x, dict):
+            return x
+        else:
+            return json.loads(x) if x.strip().startswith('{') else {}
 
 
 @dataclass
