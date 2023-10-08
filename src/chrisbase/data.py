@@ -140,18 +140,18 @@ class LineFileWrapper:
         self.open(strict=self.opt.strict)
         return self
 
+    def __len__(self) -> int:
+        if self.usable():
+            return file_lines(self.path)
+        else:
+            return 0
+
     def __iter__(self):
         if self.fp is not None:
             for line in self.fp:
                 if "b" in self.opt.mode:
                     line = line.decode(self.opt.encoding)
                 yield line.strip()
-
-    def __len__(self) -> int:
-        if self.usable():
-            return file_lines(self.path)
-        else:
-            return 0
 
     def open(self, strict: bool = False):
         self.path = self.opt.home / self.opt.name
@@ -193,15 +193,15 @@ class MongoDBWrapper:
             self.reset()
         return self
 
+    def __len__(self) -> int:
+        if self.table is not None and self.usable():
+            return self.count(self.opt.find)
+        else:
+            return 0
+
     def __iter__(self):
         if self.table is not None and self.usable():
             return self.table.find(self.opt.find).sort(self.opt.sort)
-
-    def __len__(self) -> int:
-        if self.table is not None and self.usable():
-            return self.table.count_documents(self.opt.find)
-        else:
-            return 0
 
     def count(self, query: Mapping[str, Any]) -> int:
         if self.table is not None and self.usable():
@@ -248,6 +248,14 @@ class ElasticSearchWrapper:
             self.reset()
         return self
 
+    def __len__(self) -> int:
+        self.cli.indices.refresh(index=self.opt.name)
+        if self.cli is not None:
+            res = self.cli.cat.count(index=self.opt.name, format="json")
+            if res.meta.status == 200 and len(res.body) > 0 and "count" in res.body[0]:
+                return int(res.body[0]["count"])
+        return 0
+
     def open(self, strict: bool = False):
         self.cli = Elasticsearch(
             hosts=f"http://{self.opt.home}",
@@ -279,14 +287,6 @@ class ElasticSearchWrapper:
                 for line in res.body.strip().splitlines():
                     logger.info(line)
                 logger.info(hr('-'))
-
-    def __len__(self) -> int:
-        self.cli.indices.refresh(index=self.opt.name)
-        if self.cli is not None:
-            res = self.cli.cat.count(index=self.opt.name, format="json")
-            if res.meta.status == 200 and len(res.body) > 0 and "count" in res.body[0]:
-                return int(res.body[0]["count"])
-        return 0
 
 
 @dataclass
