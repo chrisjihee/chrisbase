@@ -156,6 +156,33 @@ class Streamer:
         assert False, (f"No usable streamers among {len(streamers)}: "
                        f"{', '.join([type(x).__name__ for x in streamers])}")
 
+    def is_file_streamer(self):
+        return isinstance(self, FileStreamer)
+
+    def is_mongo_streamer(self):
+        return isinstance(self, MongoStreamer)
+
+    def is_elastic_streamer(self):
+        return isinstance(self, ElasticStreamer)
+
+    def as_file_streamer(self) -> "FileStreamer":
+        if isinstance(self, FileStreamer):
+            return self
+        else:
+            assert False, f"Invalid type: {type(self).__name__}"
+
+    def as_mongo_streamer(self) -> "MongoStreamer":
+        if isinstance(self, MongoStreamer):
+            return self
+        else:
+            assert False, f"Invalid type: {type(self).__name__}"
+
+    def as_elastic_streamer(self) -> "ElasticStreamer":
+        if isinstance(self, ElasticStreamer):
+            return self
+        else:
+            assert False, f"Invalid type: {type(self).__name__}"
+
 
 class FileStreamer(Streamer):
     def __init__(self, opt: FileOption | None):
@@ -358,15 +385,33 @@ class InputOption(OutputOption):
             elif isinstance(self, InputOption.BatchItems):
                 return self.batches
             else:
-                assert False, f"Invalid type of InputItems: {type(self).__name__}"
+                assert False, f"Invalid type: {type(self).__name__}"
+
+        def has_single_items(self):
+            return isinstance(self, InputOption.SingleItems)
+
+        def has_batch_items(self):
+            return isinstance(self, InputOption.BatchItems)
+
+        def as_single_items(self) -> "InputOption.SingleItems":
+            if isinstance(self, InputOption.SingleItems):
+                return self
+            else:
+                assert False, f"Invalid type: {type(self).__name__}"
+
+        def as_batch_items(self) -> "InputOption.BatchItems":
+            if isinstance(self, InputOption.BatchItems):
+                return self
+            else:
+                assert False, f"Invalid type: {type(self).__name__}"
 
     @dataclass
     class SingleItems(InputItems):
-        singles: Iterable
+        singles: Iterable[Any]
 
     @dataclass
     class BatchItems(InputItems):
-        batches: Iterable[Iterable]
+        batches: Iterable[Iterable[Any]]
 
     def ready_inputs(self, inputs: Iterable, total: int) -> "InputOption.SingleItems | InputOption.BatchItems":
         inputs = map(self.safe_dict, inputs)
@@ -511,6 +556,30 @@ class CommonArguments(ArgumentGroupData):
             columns = [self.data_type, "value"]
         return pd.concat([
             to_dataframe(columns=columns, raw=self.env, data_prefix="env"),
+        ]).reset_index(drop=True)
+
+
+@dataclass
+class IOArguments(CommonArguments):
+    input: InputOption = field()
+    output: OutputOption = field()
+
+    def __post_init__(self):
+        super().__post_init__()
+
+    def dataframe(self, columns=None) -> pd.DataFrame:
+        if not columns:
+            columns = [self.data_type, "value"]
+        return pd.concat([
+            to_dataframe(columns=columns, raw=self.env, data_prefix="env"),
+            to_dataframe(columns=columns, raw=self.input, data_prefix="input", data_exclude=["file", "table", "index"]),
+            to_dataframe(columns=columns, raw=self.input.file, data_prefix="input.file") if self.input.file else None,
+            to_dataframe(columns=columns, raw=self.input.table, data_prefix="input.table") if self.input.table else None,
+            to_dataframe(columns=columns, raw=self.input.index, data_prefix="input.index") if self.input.index else None,
+            to_dataframe(columns=columns, raw=self.output, data_prefix="input", data_exclude=["file", "table", "index"]),
+            to_dataframe(columns=columns, raw=self.output.file, data_prefix="output.file") if self.output.file else None,
+            to_dataframe(columns=columns, raw=self.output.table, data_prefix="output.table") if self.output.table else None,
+            to_dataframe(columns=columns, raw=self.output.index, data_prefix="output.index") if self.output.index else None,
         ]).reset_index(drop=True)
 
 
