@@ -65,7 +65,7 @@ class ArgumentGroupData(TypedData):
 
 
 @dataclass
-class RewriterOption(OptionData):
+class StreamOption(OptionData):
     home: str | Path = field()
     name: str | Path = field()
     user: str | None = field(default=None)
@@ -85,20 +85,20 @@ class RewriterOption(OptionData):
 
 
 @dataclass
-class FileOption(RewriterOption):
+class FileOption(StreamOption):
     mode: str = field(default="rb")
     encoding: str = field(default="utf-8")
 
 
 @dataclass
-class TableOption(RewriterOption):
+class TableOption(StreamOption):
     sort: str | List[Tuple[str, int] | str] = field(default="_id")
     find: dict = field(default_factory=dict)
     timeout: int = field(default=5000)
 
 
 @dataclass
-class IndexOption(RewriterOption):
+class IndexOption(StreamOption):
     window: int = field(default=10000)
     timeout: int = field(default=10)
     retrial: int = field(default=3)
@@ -116,9 +116,9 @@ class IndexOption(RewriterOption):
                     self.create_args = json.loads(content)
 
 
-class GenericRewriter:
-    def __init__(self, opt: RewriterOption | None):
-        self.opt: RewriterOption = opt
+class Streamer:
+    def __init__(self, opt: StreamOption | None):
+        self.opt: StreamOption = opt
 
     def __enter__(self):
         if not self.opt:
@@ -149,15 +149,15 @@ class GenericRewriter:
         raise NotImplementedError
 
     @staticmethod
-    def first_usable(*rewriters: "GenericRewriter") -> "GenericRewriter":
-        for rewriter in rewriters:
-            if rewriter is not None and rewriter.usable():
-                return rewriter
-        assert False, (f"No usable rewriter among {len(rewriters)} rewriters: "
-                       f"{', '.join([type(x).__qualname__ for x in rewriters])}")
+    def first_usable(*streamers: "Streamer") -> "Streamer":
+        for x in streamers:
+            if x is not None and x.usable():
+                return x
+        assert False, (f"No usable streamers among {len(streamers)}: "
+                       f"{', '.join([type(x).__name__ for x in streamers])}")
 
 
-class FileRewriter(GenericRewriter):
+class FileStreamer(Streamer):
     def __init__(self, opt: FileOption | None):
         super().__init__(opt=opt)
         self.opt: FileOption = opt
@@ -215,7 +215,7 @@ class FileRewriter(GenericRewriter):
             self.fp.truncate(0)
 
 
-class MongoRewriter(GenericRewriter):
+class MongoStreamer(Streamer):
     def __init__(self, opt: TableOption | None):
         super().__init__(opt=opt)
         self.opt: TableOption = opt
@@ -268,7 +268,7 @@ class MongoRewriter(GenericRewriter):
             return -1
 
 
-class ElasticRewriter(GenericRewriter):
+class ElasticStreamer(Streamer):
     def __init__(self, opt: IndexOption | None):
         super().__init__(opt=opt)
         self.opt: IndexOption = opt
