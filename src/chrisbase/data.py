@@ -21,7 +21,7 @@ from elasticsearch import Elasticsearch
 from more_itertools import ichunked
 from pymongo import MongoClient
 
-from chrisbase.io import get_hostname, get_hostaddr, running_file, first_or, cwd, hr, str_table, flush_or, make_parent_dir, get_ip_addrs, configure_unit_logger, configure_dual_logger, open_file
+from chrisbase.io import get_hostname, get_hostaddr, running_file, first_or, cwd, hr, str_table, flush_or, make_parent_dir, get_ip_addrs, configure_unit_logger, configure_dual_logger, open_file, file_lines
 from chrisbase.time import now, str_delta
 from chrisbase.util import tupled, SP, NO, to_dataframe
 
@@ -140,6 +140,19 @@ class LineFileWrapper:
         self.open(strict=self.opt.strict)
         return self
 
+    def __iter__(self):
+        if self.fp is not None:
+            for line in self.fp:
+                if "b" in self.opt.mode:
+                    line = line.decode(self.opt.encoding)
+                yield line.strip()
+
+    def __len__(self) -> int:
+        if self.usable():
+            return file_lines(self.path)
+        else:
+            return 0
+
     def open(self, strict: bool = False):
         self.path = self.opt.home / self.opt.name
         self.path.touch()
@@ -159,13 +172,6 @@ class LineFileWrapper:
             elif "w" in self.opt.mode:
                 return self.fp.writable()
         return False
-
-    def __iter__(self):
-        if self.fp is not None:
-            for line in self.fp:
-                if "b" in self.opt.mode:
-                    line = line.decode(self.opt.encoding)
-                yield line.strip()
 
 
 class MongoDBWrapper:
@@ -334,11 +340,13 @@ class InputOption(OptionData):
             num_input=num_input,
         )
 
-    def select_inputs(self, *wrappers: MongoDBWrapper | LineFileWrapper):
+    def select_input_batches(self, *wrappers: MongoDBWrapper | LineFileWrapper, num_input: int = -1):
+        if num_input > 0:
+            num_input = self.total
         for wrapper in wrappers:
             if wrapper and wrapper.usable():
                 return InputSource.from_batches(
-                    inputs=self.load_batches(wrapper, self.total),
+                    inputs=self.load_batches(wrapper, num_input),
                     wrapper=wrapper,
                 )
         assert False, "No input source"
@@ -355,7 +363,7 @@ class OutputOption(OptionData):
     table: TableOption | None = field(default=None)
     index: IndexOption | None = field(default=None)
 
-    def select_outputs(self, *wrappers: MongoDBWrapper | LineFileWrapper):
+    def select_output_source(self, *wrappers: MongoDBWrapper | LineFileWrapper):
         for wrapper in wrappers:
             if wrapper is not None and wrapper.usable():
                 return OutputSource(wrapper=wrapper)
@@ -568,8 +576,9 @@ class JobTimer:
             self.t1 = datetime.now()
             return self
         except Exception as e:
-            logger.error(f"[JobTimer.__enter__()] [{type(e)}] {e}")
-            exit(11)
+            raise e
+            # logger.error(f"[JobTimer.__enter__()] [{type(e)}] {e}")
+            # exit(11)
 
     def __exit__(self, *exc_info):
         try:
