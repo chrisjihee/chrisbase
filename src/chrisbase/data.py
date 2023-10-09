@@ -99,7 +99,9 @@ class TableOption(StreamOption):
 
 @dataclass
 class IndexOption(StreamOption):
-    window: int = field(default=10000)
+    window: int = field(default=1000)
+    scroll: str = field(default="3m")
+    sort: str | None = field(default=None)
     timeout: int = field(default=10)
     retrial: int = field(default=3)
     create: str | Path | None = field(default=None)
@@ -317,10 +319,16 @@ class ElasticStreamer(Streamer):
     def __iter__(self):
         if self.usable():
             self.refresh()
-            res = self.cli.search(index=self.opt.name, size=self.opt.window)
-            if res.meta.status == 200:
-                for item in res.body["hits"]["hits"]:
+            res = self.cli.search(
+                index=self.opt.name,
+                size=self.opt.window,
+                scroll=self.opt.scroll,
+                sort=self.opt.sort
+            )
+            while res.meta.status == 200 and len(res.body['hits']['hits']):
+                for item in res.body['hits']['hits']:
                     yield item["_source"]
+                res = self.cli.scroll(scroll_id=res['_scroll_id'], scroll=self.opt.scroll)
 
     def open(self) -> bool:
         self.cli = Elasticsearch(
