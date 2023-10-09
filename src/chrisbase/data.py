@@ -197,6 +197,7 @@ class FileStreamer(Streamer):
 
     def __len__(self) -> int:
         if self.usable():
+            self.fp.flush()
             return file_lines(self.path)
         else:
             return -1
