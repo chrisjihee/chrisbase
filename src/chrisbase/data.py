@@ -580,7 +580,7 @@ class IOArguments(CommonArguments):
         if not columns:
             columns = [self.data_type, "value"]
         return pd.concat([
-            to_dataframe(columns=columns, raw=self.env, data_prefix="env"),
+            super().dataframe(columns=columns),
             to_dataframe(columns=columns, raw=self.input, data_prefix="input", data_exclude=["file", "table", "index"]),
             to_dataframe(columns=columns, raw=self.input.file, data_prefix="input.file") if self.input.file else None,
             to_dataframe(columns=columns, raw=self.input.table, data_prefix="input.table") if self.input.table else None,
