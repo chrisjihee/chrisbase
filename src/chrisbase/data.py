@@ -21,7 +21,7 @@ from elasticsearch import Elasticsearch
 from more_itertools import ichunked
 from pymongo import MongoClient
 
-from chrisbase.io import get_hostname, get_hostaddr, running_file, first_or, cwd, hr, str_table, flush_or, make_parent_dir, get_ip_addrs, configure_unit_logger, configure_dual_logger, open_file, file_lines
+from chrisbase.io import get_hostname, get_hostaddr, current_file, first_or, cwd, hr, str_table, flush_or, make_parent_dir, get_ip_addrs, configure_unit_logger, configure_dual_logger, open_file, file_lines
 from chrisbase.time import now, str_delta
 from chrisbase.util import tupled, SP, NO, to_dataframe
 
@@ -456,8 +456,9 @@ class ProjectEnv(TypedData):
     hostname: str = field(init=False)
     hostaddr: str = field(init=False)
     python_path: Path = field(init=False)
-    working_path: Path = field(init=False)
-    running_file: Path = field(init=False)
+    current_dir: Path = field(init=False)
+    current_file: Path = field(init=False)
+    working_dir: Path = field(init=False)
     command_args: List[str] = field(init=False)
     num_ip_addrs: int = field(init=False)
     max_workers: int = field(default=1)
@@ -484,12 +485,13 @@ class ProjectEnv(TypedData):
         assert self.project, "Project name must be provided"
         self.hostname = get_hostname()
         self.hostaddr = get_hostaddr()
-        self.python_path = Path(sys.executable)
-        self.running_file = running_file()
-        self.project_path = first_or([x for x in self.running_file.parents if x.name.startswith(self.project)])
-        assert self.project_path, f"Could not find project path for {self.project} in {', '.join([str(x) for x in self.running_file.parents])}"
-        self.working_path = cwd(self.project_path)
-        self.running_file = self.running_file.relative_to(self.working_path)
+        self.python_path = Path(sys.executable).absolute()
+        self.current_dir = Path().absolute()
+        self.current_file = current_file().absolute()
+        project_path_candidates = [self.current_dir] + list(self.current_dir.parents) + list(self.current_file.parents)
+        self.project_path = first_or([x for x in project_path_candidates if x.name.startswith(self.project)])
+        assert self.project_path, f"Could not find project path for {self.project} in {', '.join([str(x) for x in project_path_candidates])}"
+        self.working_dir = cwd(self.project_path)
         self.command_args = sys.argv[1:]
         self.ip_addrs, self.num_ip_addrs = get_ip_addrs()
         self.output_home = Path(self.output_home) if self.output_home else None

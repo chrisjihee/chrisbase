@@ -120,7 +120,7 @@ def is_notebook() -> bool:
         return False
 
 
-def running_file(known_path: Path or str = None):
+def current_file(known_path: Path or str = None):
     if known_path and exists_or(Path(known_path)):
         return Path(known_path)
     elif is_notebook():
