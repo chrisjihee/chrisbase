@@ -624,7 +624,7 @@ class ArgumentsUsing:  # TODO: Remove someday!
 class JobTimer:
     def __init__(self, name=None, args: CommonArguments = None, prefix=None, postfix=None,
                  verbose=True, mt=0, mb=0, pt=0, pb=0, rt=0, rb=0, rc='-',
-                 flush_sec=0.3, mute_loggers=None, mute_warning=None):
+                 flush_sec=0.1, mute_loggers=None, mute_warning=None):
         self.name = name
         self.args = args
         self.prefix = prefix if prefix and len(prefix) > 0 else None
