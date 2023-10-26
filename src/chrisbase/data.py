@@ -587,7 +587,7 @@ class IOArguments(CommonArguments):
             to_dataframe(columns=columns, raw=self.input.file, data_prefix="input.file") if self.input.file else None,
             to_dataframe(columns=columns, raw=self.input.table, data_prefix="input.table") if self.input.table else None,
             to_dataframe(columns=columns, raw=self.input.index, data_prefix="input.index") if self.input.index else None,
-            to_dataframe(columns=columns, raw=self.output, data_prefix="input", data_exclude=["file", "table", "index"]),
+            to_dataframe(columns=columns, raw=self.output, data_prefix="output", data_exclude=["file", "table", "index"]),
             to_dataframe(columns=columns, raw=self.output.file, data_prefix="output.file") if self.output.file else None,
             to_dataframe(columns=columns, raw=self.output.table, data_prefix="output.table") if self.output.table else None,
             to_dataframe(columns=columns, raw=self.output.index, data_prefix="output.index") if self.output.index else None,
