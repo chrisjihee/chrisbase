@@ -66,8 +66,8 @@ class ArgumentGroupData(TypedData):
 
 @dataclass
 class StreamOption(OptionData):
-    home: str | Path = field()
     name: str | Path = field()
+    home: str | Path = field(default=Path("."))
     user: str | None = field(default=None)
     pswd: str | None = field(default=None)
     reset: bool = field(default=False)
@@ -230,7 +230,8 @@ class FileStreamer(Streamer):
 
     def open(self) -> bool:
         self.path = self.opt.home / self.opt.name
-        self.path.touch()
+        if "w" in self.opt.mode or "a" in self.opt.mode:
+            self.path.touch()
         if self.path.exists() and self.path.is_file():
             self.fp = open_file(
                 self.path,
