@@ -187,6 +187,15 @@ def str_table(tabular_data, headers=(), tablefmt="pipe", showindex="default", tr
     return tabulate(tabular_data, headers=headers, tablefmt=tablefmt, showindex=showindex, **kwargs)
 
 
+def to_table_lines(*args, tablefmt="presto", border_idx=1, **kwargs):
+    table = str_table(*args, **kwargs, tablefmt=tablefmt)
+    lines = table.splitlines()
+    border = lines[border_idx]
+    lines = [border] + lines + [border]
+    for line in lines:
+        yield line
+
+
 def file_table(*args, file=sys_stdout, **kwargs):
     print(str_table(*args, **kwargs), file=file)
 

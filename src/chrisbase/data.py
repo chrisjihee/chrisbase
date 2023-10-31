@@ -21,7 +21,7 @@ from elasticsearch import Elasticsearch
 from more_itertools import ichunked
 from pymongo import MongoClient
 
-from chrisbase.io import get_hostname, get_hostaddr, current_file, first_or, cwd, hr, str_table, flush_or, make_parent_dir, get_ip_addrs, configure_unit_logger, configure_dual_logger, open_file, file_lines
+from chrisbase.io import get_hostname, get_hostaddr, current_file, first_or, cwd, hr, flush_or, make_parent_dir, get_ip_addrs, configure_unit_logger, configure_dual_logger, open_file, file_lines, to_table_lines
 from chrisbase.time import now, str_delta
 from chrisbase.util import tupled, SP, NO, to_dataframe
 
@@ -476,9 +476,8 @@ class ProjectEnv(TypedData):
         self.job_name = name
         return self
 
-    def info_args(self):
-        table = str_table(to_dataframe(self), tablefmt="presto")  # "plain", "presto"
-        for line in table.splitlines() + [hr(c='-')]:
+    def info_env(self):
+        for line in to_table_lines(to_dataframe(self)):
             logger.info(line)
         return self
 
@@ -556,10 +555,7 @@ class CommonArguments(ArgumentGroupData):
         return args_file
 
     def info_args(self):
-        table = str_table(self.dataframe(), tablefmt="presto")
-        lines = table.splitlines()
-        lines = [lines[1]] + lines + [lines[1]]
-        for line in lines:
+        for line in to_table_lines(self.dataframe()):
             logger.info(line)
         return self
 
