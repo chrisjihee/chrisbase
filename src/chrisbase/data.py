@@ -482,21 +482,19 @@ class ProjectEnv(TypedData):
         return self
 
     def __post_init__(self):
-        assert self.project, "Project name must be provided"
         self.hostname = get_hostname()
         self.hostaddr = get_hostaddr()
         self.python_path = Path(sys.executable).absolute()
         self.current_dir = Path().absolute()
         self.current_file = current_file().absolute()
         project_path_candidates = [self.current_dir] + list(self.current_dir.parents) + list(self.current_file.parents)
-        self.project_path = first_or([x for x in project_path_candidates if x.name.startswith(self.project)])
-        assert self.project_path, f"Could not find project path for {self.project} in {', '.join([str(x) for x in project_path_candidates])}"
+        self.project_path = first_or([x for x in project_path_candidates if x.name.startswith(self.project)]) if self.project else None
         self.working_dir = cwd(self.project_path)
         self.command_args = sys.argv[1:]
         self.ip_addrs, self.num_ip_addrs = get_ip_addrs()
-        self.output_home = Path(self.output_home) if self.output_home else None
-        self.logging_file = Path(self.logging_file) if self.logging_file else None
-        self.argument_file = Path(self.argument_file)
+        self.output_home = Path(self.output_home).absolute() if self.output_home else None
+        self.logging_file = Path(self.logging_file).absolute() if self.logging_file else None
+        self.argument_file = Path(self.argument_file).absolute()
         configure_unit_logger(level=self.msg_level, fmt=self.msg_format, datefmt=self.date_format, stream=sys.stdout)
 
 
