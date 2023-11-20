@@ -493,8 +493,8 @@ class ProjectEnv(TypedData):
         self.command_args = sys.argv[1:]
         self.ip_addrs, self.num_ip_addrs = get_ip_addrs()
         self.output_home = Path(self.output_home).absolute() if self.output_home else None
-        self.logging_file = Path(self.logging_file).absolute() if self.logging_file else None
-        self.argument_file = Path(self.argument_file).absolute()
+        self.logging_file = Path(self.logging_file) if self.logging_file else None
+        self.argument_file = Path(self.argument_file)
         configure_unit_logger(level=self.msg_level, fmt=self.msg_format, datefmt=self.date_format, stream=sys.stdout)
 
 
