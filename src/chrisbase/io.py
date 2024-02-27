@@ -138,13 +138,16 @@ def current_file(known_path: Path or str = None):
         raise RuntimeError("Cannot find current path")
 
 
-def hr(c="=", w=137, t=0, b=0):
+def hr(c="=", w=137, t=0, b=0, title=''):
     # w=137-26 : %(asctime)s %(levelname)-8s %(message)s
     # w=137-47 : %(asctime)s %(levelname)-8s %(filename)15s:%(lineno)-4d %(message)s
     # w=137 (for ipynb on Chrome using D2Coding 13pt) with scroll
     # w=139 (for ipynb on Chrome using D2Coding 13pt) without scroll
     # w=165 (for ipynb on GitHub using D2Coding 13pt)
-    return "\n" * t + c * w + "\n" * b
+    if len(title) == 0:
+        return "\n" * t + c * w + "\n" * b
+    else:
+        return "\n" * t + c * 3 + f" {title} " + c * (w - len(f" {title} ") - 3) + "\n" * b
 
 
 def file_hr(*args, file=sys_stdout, c=None, ct=None, cb=None, title=None, sleep_sec=0.0, **kwargs):
