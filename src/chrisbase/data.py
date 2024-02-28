@@ -523,8 +523,8 @@ class TimeChecker(ResultData):
 @dataclass
 class CommonArguments(ArgumentGroupData):
     tag = None
-    time = TimeChecker()
     env: ProjectEnv = field()
+    time = TimeChecker()
 
     def __post_init__(self):
         super().__post_init__()
@@ -560,9 +560,12 @@ class CommonArguments(ArgumentGroupData):
     def dataframe(self, columns=None) -> pd.DataFrame:
         if not columns:
             columns = [self.data_type, "value"]
-        return pd.concat([
+        df = pd.concat([
+            to_dataframe(columns=columns, raw={"tag": self.tag}),
             to_dataframe(columns=columns, raw=self.env, data_prefix="env"),
+            to_dataframe(columns=columns, raw=self.time, data_prefix="time"),
         ]).reset_index(drop=True)
+        return df
 
 
 @dataclass
@@ -670,8 +673,8 @@ class JobTimer:
                 flush_or(sys.stdout, sys.stderr, sec=self.flush_sec if self.flush_sec else None)
             if self.args:
                 self.args.time.set_started()
-                self.args.save_args()
                 if self.verbose:
+                    self.args.save_args()
                     self.args.info_args()
             self.t1 = datetime.now()
             return self
