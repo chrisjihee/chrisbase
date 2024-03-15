@@ -21,7 +21,7 @@ from elasticsearch import Elasticsearch
 from more_itertools import ichunked
 from pymongo import MongoClient
 
-from chrisbase.io import get_hostname, get_hostaddr, current_file, first_or, cwd, hr, flush_or, make_parent_dir, get_ip_addrs, configure_unit_logger, configure_dual_logger, open_file, file_lines, to_table_lines
+from chrisbase.io import get_hostname, get_hostaddr, current_file, first_or, cwd, hr, flush_or, make_parent_dir, get_ip_addrs, setup_unit_logger, setup_dual_logger, open_file, file_lines, to_table_lines
 from chrisbase.time import now, str_delta
 from chrisbase.util import tupled, SP, NO, to_dataframe
 
@@ -456,6 +456,7 @@ class ProjectEnv(TypedData):
     job_name: str = field(default=None)
     hostname: str = field(init=False)
     hostaddr: str = field(init=False)
+    time_stamp: str = now('%m%d.%H%M%S')
     python_path: Path = field(init=False)
     current_dir: Path = field(init=False)
     current_file: Path = field(init=False)
@@ -463,23 +464,13 @@ class ProjectEnv(TypedData):
     command_args: List[str] = field(init=False)
     num_ip_addrs: int = field(init=False)
     max_workers: int = field(default=1)
-    output_home: str | Path | None = field(default=None)
-    logging_file: str | Path | None = field(default=None)
-    argument_file: str | Path = field(default="arguments.json")
     debugging: bool = field(default=False)
     msg_level: int = field(default=logging.INFO)
     msg_format: str = field(default=logging.BASIC_FORMAT)
     date_format: str = field(default="[%m.%d %H:%M:%S]")
-    time_stamp: str = now('%m%d.%H%M%S')
-
-    def set(self, name: str = None):
-        self.job_name = name
-        return self
-
-    def info_env(self):
-        for line in to_table_lines(to_dataframe(self)):
-            logger.info(line)
-        return self
+    output_home: str | Path | None = field(default=None)
+    logging_file: str | Path | None = field(default=None)
+    argument_file: str | Path | None = field(default=None)
 
     def __post_init__(self):
         self.hostname = get_hostname()
@@ -494,8 +485,35 @@ class ProjectEnv(TypedData):
         self.ip_addrs, self.num_ip_addrs = get_ip_addrs()
         self.output_home = Path(self.output_home).absolute() if self.output_home else None
         self.logging_file = Path(self.logging_file) if self.logging_file else None
-        self.argument_file = Path(self.argument_file)
-        configure_unit_logger(level=self.msg_level, fmt=self.msg_format, datefmt=self.date_format, stream=sys.stdout)
+        self.argument_file = Path(self.argument_file) if self.argument_file else None
+        self._setup_logger()
+
+    def info_env(self):
+        for line in to_table_lines(to_dataframe(self)):
+            logger.info(line)
+        return self
+
+    def _setup_logger(self):
+        if self.output_home and self.logging_file:
+            setup_dual_logger(level=self.msg_level, fmt=self.msg_format, datefmt=self.date_format, stream=sys.stdout, filename=self.output_home / self.logging_file)
+        else:
+            setup_unit_logger(level=self.msg_level, fmt=self.msg_format, datefmt=self.date_format, stream=sys.stdout)
+        return self
+
+    def set_job_name(self, name: str = None):
+        self.job_name = name
+        return self
+
+    def set_output_home(self, output_home: str | Path | None):
+        self.output_home = Path(output_home).absolute() if output_home else None
+        self._setup_logger()
+
+    def set_logging_file(self, logging_file: str | Path | None):
+        self.logging_file = Path(logging_file) if logging_file else None
+        self._setup_logger()
+
+    def set_argument_file(self, argument_file: str | Path | None):
+        self.logging_file = Path(argument_file) if argument_file else None
 
 
 @dataclass
@@ -528,29 +546,15 @@ class CommonArguments(ArgumentGroupData):
 
     def __post_init__(self):
         super().__post_init__()
-        if self.tag:
-            if not self.env.argument_file.stem.startswith(self.tag):
-                self.env.argument_file = self.env.argument_file.with_stem(f"{self.tag}-{self.env.argument_file.stem}")
-            if self.env.logging_file:
-                if not self.env.logging_file.stem.startswith(self.tag):
-                    self.env.logging_file = self.env.logging_file.with_stem(f"{self.tag}-{self.env.logging_file.stem}")
-        if self.env.time_stamp:
-            if not self.env.argument_file.stem.endswith(self.env.time_stamp):
-                self.env.argument_file = self.env.argument_file.with_stem(f"{self.env.argument_file.stem}-{self.env.time_stamp}")
-            if self.env.logging_file:
-                if not self.env.logging_file.stem.endswith(self.env.time_stamp):
-                    self.env.logging_file = self.env.logging_file.with_stem(f"{self.env.logging_file.stem}-{self.env.time_stamp}")
-        if self.env.output_home and self.env.logging_file:
-            configure_dual_logger(level=self.env.msg_level, fmt=self.env.msg_format, datefmt=self.env.date_format, stream=sys.stdout,
-                                  filename=self.env.output_home / self.env.logging_file)
 
     def save_args(self, to: Path | str = None) -> Path | None:
-        if not self.env.output_home:
+        if self.env.output_home and self.env.argument_file:
+            args_file = to if to else self.env.output_home / self.env.argument_file
+            args_json = self.to_json(default=str, ensure_ascii=False, indent=2)
+            make_parent_dir(args_file).write_text(args_json, encoding="utf-8")
+            return args_file
+        else:
             return None
-        args_file = to if to else self.env.output_home / self.env.argument_file
-        args_json = self.to_json(default=str, ensure_ascii=False, indent=2)
-        make_parent_dir(args_file).write_text(args_json, encoding="utf-8")
-        return args_file
 
     def info_args(self):
         for line in to_table_lines(self.dataframe()):

@@ -601,18 +601,18 @@ def environ_to_dataframe(max_value_len=200, columns=None):
                         columns=columns)
 
 
-def configure_unit_logger(level=logging.INFO, force=True,
-                          stream=sys_stdout, filename=None, filemode="a", existing_content=None,
-                          fmt=logging.BASIC_FORMAT, datefmt="[%m.%d %H:%M:%S]"):
+def setup_unit_logger(level=logging.INFO, force=True,
+                      stream=sys_stdout, filename=None, filemode="a", existing_content=None,
+                      fmt=logging.BASIC_FORMAT, datefmt="[%m.%d %H:%M:%S]"):
     formatter = logging.Formatter(fmt=fmt, datefmt=datefmt)
     handlers = make_logging_handlers(formatter=formatter, stream=stream, filename=filename, filemode=filemode, existing_content=existing_content)[-1:]
     logging.basicConfig(level=level, force=force, handlers=handlers)
     update_existing_handlers(handlers=handlers)
 
 
-def configure_dual_logger(level=logging.INFO, force=True,
-                          stream=sys_stdout, filename="running.log", filemode="a", existing_content=None,
-                          fmt=logging.BASIC_FORMAT, datefmt="[%m.%d %H:%M:%S]"):
+def setup_dual_logger(level=logging.INFO, force=True,
+                      stream=sys_stdout, filename="running.log", filemode="a", existing_content=None,
+                      fmt=logging.BASIC_FORMAT, datefmt="[%m.%d %H:%M:%S]"):
     formatter = logging.Formatter(fmt=fmt, datefmt=datefmt)
     handlers = make_logging_handlers(formatter=formatter, stream=stream, filename=filename, filemode=filemode, existing_content=existing_content)
     logging.basicConfig(level=level, force=force, handlers=handlers)
