@@ -454,6 +454,7 @@ class InputOption(OutputOption):
 class ProjectEnv(TypedData):
     project: str = field()
     job_name: str = field(default=None)
+    job_version: int = field(default=None)
     hostname: str = field(init=False)
     hostaddr: str = field(init=False)
     time_stamp: str = now('%m%d.%H%M%S')
