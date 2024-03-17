@@ -504,8 +504,11 @@ class ProjectEnv(TypedData):
         self.job_name = name
         return self
 
-    def set_output_home(self, output_home: str | Path | None):
-        self.output_home = Path(output_home).absolute() if output_home else None
+    def set_output_home(self, output_home: str | Path | None, absolute: bool = False):
+        if absolute:
+            self.output_home = Path(output_home).absolute() if output_home else None
+        else:
+            self.output_home = Path(output_home) if output_home else None
         self._setup_logger()
 
     def set_logging_file(self, logging_file: str | Path | None):
@@ -513,7 +516,7 @@ class ProjectEnv(TypedData):
         self._setup_logger()
 
     def set_argument_file(self, argument_file: str | Path | None):
-        self.logging_file = Path(argument_file) if argument_file else None
+        self.argument_file = Path(argument_file) if argument_file else None
 
 
 @dataclass
