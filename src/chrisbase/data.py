@@ -609,20 +609,6 @@ class RuntimeChecking:
         self.args.save_args()
 
 
-class ArgumentsUsing:  # TODO: Remove someday!
-    def __init__(self, args: CommonArguments, delete_on_exit: bool = True):
-        self.args: CommonArguments = args
-        self.delete_on_exit: bool = delete_on_exit
-
-    def __enter__(self) -> Path:
-        self.args_file: Path | None = self.args.save_args()
-        return self.args_file
-
-    def __exit__(self, *exc_info):
-        if self.delete_on_exit and self.args_file:
-            self.args_file.unlink(missing_ok=True)
-
-
 class JobTimer:
     def __init__(self, name=None, args: CommonArguments = None, prefix=None, postfix=None,
                  verbose=True, mt=0, mb=0, pt=0, pb=0, rt=0, rb=0, rc='-',

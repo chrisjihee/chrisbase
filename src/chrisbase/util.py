@@ -1,30 +1,21 @@
 from __future__ import annotations
 
 import dataclasses
-import json
 import logging
 import os
 import random
 import re
-from concurrent.futures import ProcessPoolExecutor, Future
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import asdict
 from itertools import groupby
 from operator import itemgetter, attrgetter
-from pathlib import Path
-from sys import stdout
-from typing import Iterable, Tuple
-from typing import List
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
 import tqdm.std as tqdm_std
-from pymongo import MongoClient
-from pymongo.collection import Collection
 from sqlalchemy.util import OrderedSet
-
-from chrisbase.time import now
 
 logger = logging.getLogger(__name__)
 
@@ -186,60 +177,6 @@ def display_histogram(seqs, figsize=(10, 5), dpi=80, bins=20, rwidth=0.8, yaxis_
         plt.show()
 
 
-class MongoDB:  # TODO: Remove someday
-    def __init__(self, db_name, tab_name, pool: List[MongoDB] | None = None, clear_table=False, host="localhost", port=27017):
-        self.pool: List[MongoDB] | None = pool
-        self.client: MongoClient = MongoClient(host=host, port=port)
-        self.table: Collection = self.client[db_name][tab_name]
-        if clear_table:
-            self.table.drop()
-
-    def __enter__(self) -> "MongoDB":
-        if self.pool is not None:
-            self.pool.append(self)
-        return self
-
-    def __exit__(self, *exc_info):
-        if self.pool is not None:
-            self.pool.remove(self)
-        self.client.close()
-
-    def __repr__(self):
-        address = "Unknown"
-        if self.client.address:
-            host, port = self.client.address
-            address = f"{host}:{port}"
-        return f'<MongoDB client="{address}", table="{self.table.full_name}">'
-
-    @property
-    def num_documents(self):
-        return self.count_documents({})
-
-    def count_documents(self, *args, **kwargs):
-        return self.table.count_documents(*args, **kwargs)
-
-    def export_table(self, to: str | Path, tqdm=None, interval: int = 1, exclude_id: bool = False, sort_by="_id", *args, **kwargs):  # TODO: Remove someday
-        existing_ids = set()
-        with Path(to).open("w") as out:
-            if sort_by:
-                result_set = self.table.find(*args, **kwargs).sort(sort_by)
-            else:
-                result_set = self.table.find(*args, **kwargs)
-            if tqdm:
-                result_set = tqdm(result_set, total=self.num_documents, desc="exporting", unit="ea")
-            for i, res in enumerate(result_set, start=1):
-                existing_ids.add(res.get("_id"))
-                if exclude_id:
-                    res.pop("_id")
-                out.write(json.dumps(res, ensure_ascii=False) + '\n')
-                if isinstance(result_set, tqdm_std.tqdm):
-                    if i > 0 and i % interval == 0:
-                        logger.info(result_set)
-            if isinstance(result_set, tqdm_std.tqdm):
-                logger.info(result_set)
-        return existing_ids
-
-
 class EmptyTqdm:
     """Dummy tqdm which doesn't do anything."""
 
@@ -276,38 +213,6 @@ class empty_tqdm_cls:
         pass
 
 
-class time_tqdm_cls:  # TODO: Remove someday!
-    def to_desc(self, desc, pre=None):
-        return NO.join([
-            f'{now(prefix=self.prefix)} ',
-            f'{pre} ' if pre else '',
-            f'{desc:{self.aline}{self.desc_size}s}',
-        ])
-
-    def __init__(self, bar_size=50, desc_size=10, prefix=None, file=stdout, aline='right'):
-        self.desc_size = desc_size
-        self.bar_size = bar_size
-        self.prefix = prefix
-        self.file = file
-        self.aline = '<' if str(aline).strip().lower() == 'left' else '>'
-
-    def __call__(self, *args, **kwargs):
-        if 'desc' not in kwargs or not kwargs['desc']:
-            kwargs['desc'] = 'processing'
-        kwargs['desc'] = self.to_desc(desc=kwargs['desc'],
-                                      pre=kwargs.pop('pre') if 'pre' in kwargs else None)
-        kwargs.pop('file', None)
-        kwargs.pop('bar_format', None)
-        return tqdm_std.tqdm(*args, bar_format=f"{{l_bar}}{{bar:{self.bar_size}}}{{r_bar}}", file=self.file, **kwargs)
-
-    def set_lock(self, *args, **kwargs):
-        self._lock = None
-        return tqdm_std.tqdm.set_lock(*args, **kwargs)
-
-    def get_lock(self):
-        return tqdm_std.tqdm.get_lock()
-
-
 class mute_tqdm_cls:
     def to_desc(self, desc, pre=None):
         return NO.join([
@@ -342,20 +247,3 @@ def terminate_processes(pool: ProcessPoolExecutor):
     for proc in pool._processes.values():
         if proc.is_alive():
             proc.terminate()
-
-
-def wait_future_jobs(jobs: Iterable[Tuple[int, Future]], pool: ProcessPoolExecutor, interval: int = 1, timeout=None, debugging: bool = False):  # TODO: Remove someday
-    for i, job in jobs:
-        if debugging:
-            job.result(timeout=timeout)
-        else:
-            try:
-                job.result(timeout=timeout)
-            except Exception as e:
-                logger.warning(f"{type(e)} on job[{i}]({job})")
-        if isinstance(jobs, tqdm_std.tqdm):
-            if i > 0 and i % interval == 0:
-                logger.info(jobs)
-    if isinstance(jobs, tqdm_std.tqdm):
-        logger.info(jobs)
-    terminate_processes(pool)
