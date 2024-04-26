@@ -228,6 +228,11 @@ def flush_or(*outs, sec):
                 sleep(sec)
 
 
+def read_or(path):
+    path = Path(path)
+    return path.read_text() if path.is_file() else None
+
+
 def exists_or(path):
     path = Path(path)
     return path if path.exists() else None
