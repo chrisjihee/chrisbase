@@ -615,7 +615,7 @@ class RuntimeChecking:
 
 class JobTimer:
     def __init__(self, name=None, args: CommonArguments = None, prefix=None, postfix=None,
-                 verbose=True, mt=0, mb=0, pt=0, pb=0, rt=0, rb=0, rc='-',
+                 verbose=True, mt=0, mb=0, pt=0, pb=0, rt=0, rb=0, rc='-', rw=137,
                  flush_sec=0.1, mute_loggers=None, mute_warning=None):
         self.name = name
         self.args = args
@@ -629,6 +629,7 @@ class JobTimer:
         self.rt: int = rt
         self.rb: int = rb
         self.rc: str = rc
+        self.rw: int = rw
         self.verbose: bool = verbose
         assert isinstance(mute_loggers, (type(None), str, list, tuple, set))
         assert isinstance(mute_warning, (type(None), str, list, tuple, set))
@@ -655,12 +656,12 @@ class JobTimer:
                         logger.info('')
                 if self.rt > 0:
                     for _ in range(self.rt):
-                        logger.info(hr(c=self.rc))
+                        logger.info(hr(c=self.rc, w=self.rw))
                 if self.name:
                     logger.info(f'{self.prefix + SP if self.prefix else NO}[INIT] {self.name}{SP + self.postfix if self.postfix else NO}')
                     if self.rt > 0:
                         for _ in range(self.rt):
-                            logger.info(hr(c=self.rc))
+                            logger.info(hr(c=self.rc, w=self.rw))
                 if self.pt > 0:
                     for _ in range(self.pt):
                         logger.info('')
@@ -691,12 +692,12 @@ class JobTimer:
                         logger.info('')
                 if self.rb > 0:
                     for _ in range(self.rb):
-                        logger.info(hr(c=self.rc))
+                        logger.info(hr(c=self.rc, w=self.rw))
                 if self.name:
                     logger.info(f'{self.prefix + SP if self.prefix else NO}[EXIT] {self.name}{SP + self.postfix if self.postfix else NO} ($={str_delta(self.td)})')
                     if self.rb > 0:
                         for _ in range(self.rb):
-                            logger.info(hr(c=self.rc))
+                            logger.info(hr(c=self.rc, w=self.rw))
                 if self.mb > 0:
                     for _ in range(self.mb):
                         logger.info('')
