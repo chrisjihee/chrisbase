@@ -29,6 +29,8 @@ sys_stderr = sys.stderr
 
 
 class LoggingFormat:
+    SHORT_00: str = ' ┇ '.join(['%(asctime)s', '%(message)s'])
+    SHORT_16: str = ' ┇ '.join(['%(asctime)s', '%(name)16s', '%(message)s'])
     CHECK_48: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-8s', '%(name)48s', '%(message)s'])
     CHECK_40: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-8s', '%(name)40s', '%(message)s'])
     CHECK_36: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-8s', '%(name)36s', '%(message)s'])
