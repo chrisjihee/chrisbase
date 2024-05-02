@@ -106,6 +106,14 @@ def no_nonprintable(x, repl='﹍'):
     return NO.join(c if c.isprintable() else repl for c in str(x))
 
 
+def mask_str(x, mask='*', start=0, end=0):
+    if end == 0:
+        end = len(x)
+    elif end < 0:
+        end = max(len(x) + end, 0)
+    return x[:start] + mask * max(end - start, 0) + x[end:]
+
+
 def percent(x, fmt='5.1f'):
     return f'{100 * x:{fmt}}%'
 
