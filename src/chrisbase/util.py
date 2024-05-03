@@ -114,6 +114,13 @@ def mask_str(x, mask='*', start=0, end=0):
     return x[:start] + mask * max(end - start, 0) + x[end:]
 
 
+def prefixed_str(x, pre, delimiter=LF):
+    y = []
+    for x0 in x.split(LF):
+        y.append(pre + x0)
+    return delimiter.join(y)
+
+
 def percent(x, fmt='5.1f'):
     return f'{100 * x:{fmt}}%'
 
