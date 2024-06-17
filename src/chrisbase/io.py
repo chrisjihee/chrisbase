@@ -239,17 +239,23 @@ def flush_or(*outs, sec):
                 sleep(sec)
 
 
-def read_or(path):
+def read_or(path: str | Path):
+    if not path:
+        return None
     path = Path(path)
     return path.read_text() if path.is_file() else None
 
 
-def exists_or(path):
+def exists_or(path: str | Path):
+    if not path:
+        return None
     path = Path(path)
     return path if path.exists() else None
 
 
-def first_path_or(path):
+def first_path_or(path: str | Path):
+    if not path:
+        return None
     try:
         return next(iter(paths(path)))
     except StopIteration:
@@ -257,6 +263,8 @@ def first_path_or(path):
 
 
 def first_or(xs):
+    if not xs:
+        return None
     try:
         return next(iter(xs))
     except StopIteration:

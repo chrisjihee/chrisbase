@@ -107,11 +107,16 @@ def no_nonprintable(x, repl='﹍'):
 
 
 def mask_str(x, mask='*', start=0, end=0):
-    if end == 0:
-        end = len(x)
-    elif end < 0:
+    if start < 0:
+        start = max(len(x) + start, 0)
+    if end < 0:
         end = max(len(x) + end, 0)
-    return x[:start] + mask * max(end - start, 0) + x[end:]
+    if end == 0 or end > len(x):
+        end = len(x)
+    if start >= end:
+        return x
+    else:
+        return x[:start] + mask * (end - start) + x[end:]
 
 
 def prefixed_str(x, pre, delimiter=LF):
