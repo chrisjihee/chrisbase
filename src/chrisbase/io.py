@@ -594,11 +594,13 @@ def get_hostname() -> str:
 
 
 def get_hostaddr(default="127.0.0.1") -> str:
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as st:
-        st.connect(("8.8.8.8", 80))
-        r = first_or(st.getsockname())
-        return r if r else default
-
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as st:
+            st.connect(("8.8.8.8", 80))
+            r = first_or(st.getsockname())
+            return r if r else default
+    except OSError:
+        return default
 
 def yield_local_addrs():
     for inf in netifaces.interfaces():
