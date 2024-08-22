@@ -246,6 +246,14 @@ def read_or(path: str | Path):
     return path.read_text() if path.is_file() else None
 
 
+def write_or(path: str | Path, data: str):
+    if not path:
+        return None
+    path = Path(path)
+    path.write_text(data)
+    return file_size(path)
+
+
 def exists_or(path: str | Path):
     if not path:
         return None
@@ -453,7 +461,7 @@ def open_file(path: str | Path, mode: str = "rb", **kwargs) -> IOBase:
         return file.open(mode, **kwargs)
 
 
-def save_json(obj: dict, path: str | Path, **kwargs):
+def save_json(obj: dict | list, path: str | Path, **kwargs):
     file = make_parent_dir(Path(path))
     with file.open("w") as f:
         json.dump(obj, f, **kwargs)
