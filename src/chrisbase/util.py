@@ -5,10 +5,12 @@ import logging
 import os
 import random
 import re
+from concurrent.futures import Future
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import asdict
 from itertools import groupby
 from operator import itemgetter, attrgetter
+from typing import Iterable, Tuple
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
@@ -267,3 +269,20 @@ def terminate_processes(pool: ProcessPoolExecutor):
     for proc in pool._processes.values():
         if proc.is_alive():
             proc.terminate()
+
+
+def wait_future_jobs(jobs: Iterable[Tuple[int, Future]], pool: ProcessPoolExecutor, interval: int = 1, timeout=None, debugging: bool = False):  # TODO: Remove someday
+    for i, job in jobs:
+        if debugging:
+            job.result(timeout=timeout)
+        else:
+            try:
+                job.result(timeout=timeout)
+            except Exception as e:
+                logger.warning(f"{type(e)} on job[{i}]({job})")
+        if isinstance(jobs, tqdm_std.tqdm):
+            if i > 0 and i % interval == 0:
+                logger.info(jobs)
+    if isinstance(jobs, tqdm_std.tqdm):
+        logger.info(jobs)
+    terminate_processes(pool)
