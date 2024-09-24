@@ -379,7 +379,7 @@ class InputOption(OutputOption):
     limit: int = field(default=-1)
     batch: int = field(default=1)
     inter: int = field(default=10000)
-    # total: int = field(default=-1)
+    data: Iterable | None = field(default=None)
     file: FileOption | None = field(default=None)
     table: TableOption | None = field(default=None)
     index: IndexOption | None = field(default=None)
@@ -423,8 +423,9 @@ class InputOption(OutputOption):
     class BatchItems(InputItems):
         batches: Iterable[Iterable[Any]]
 
-    def ready_inputs(self, inputs: Iterable, total: int) -> "InputOption.SingleItems | InputOption.BatchItems":
-        inputs = map(self.safe_dict, inputs)
+    def ready_inputs(self, inputs: Iterable, total: int, str_to_dict: bool = False) -> "InputOption.SingleItems | InputOption.BatchItems":
+        if str_to_dict:
+            inputs = map(self.safe_dict, inputs)
         if self.start > 0:
             inputs = islice(inputs, self.start, total)
             total = max(0, min(total, total - self.start))
@@ -465,6 +466,8 @@ class ProjectEnv(TypedData):
     command_args: List[str] = field(init=False)
     num_ip_addrs: int = field(init=False)
     max_workers: int = field(default=1)
+    calling_sec: float = field(default=0.001)
+    waiting_sec: float = field(default=300.0)
     debugging: bool = field(default=False)
     msg_level: int = field(default=logging.INFO)
     msg_format: str = field(default=logging.BASIC_FORMAT)
