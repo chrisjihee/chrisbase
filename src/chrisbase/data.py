@@ -289,7 +289,7 @@ class MongoStreamer(Streamer):
             logger.info(f"Drop an existing table: {self.opt}")
             self.db.drop_collection(f"{self.opt.name}")
 
-    def count(self, query: Mapping[str, Any], exact: bool = False) -> int:
+    def count(self, query: Mapping[str, Any], exact: bool = True) -> int:
         if self.usable():
             if exact:
                 return self.table.count_documents(query)
