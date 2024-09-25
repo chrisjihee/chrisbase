@@ -1,18 +1,20 @@
 # chrisbase
 
-A base tool for python programming
+Base library for python coding
 
 ## Installation
 
-```bash
-pip install chrisbase
-```
+* Install through pip
+    ```bash
+    pip install chrisbase
+    ```
 
-```bash
-git clone https://github.com/chrisjihee/chrisbase
-cd chrisbase
-pip install .
-```
+* Install through git
+    ```bash
+    rm -rf chrisbase*
+    git clone git@github.com:chrisjihee/chrisbase.git
+    pip install -U -e chrisbase*
+    ```
 
 ## Reference
 
