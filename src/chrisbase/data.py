@@ -21,7 +21,7 @@ from elasticsearch import Elasticsearch
 from more_itertools import ichunked
 from pymongo import MongoClient
 
-from chrisbase.io import get_hostname, get_hostaddr, current_file, first_or, cwd, hr, flush_or, make_parent_dir, get_ip_addrs, setup_unit_logger, setup_dual_logger, open_file, file_lines, to_table_lines
+from chrisbase.io import get_hostname, get_hostaddr, current_file, first_or, cwd, hr, flush_or, make_parent_dir, get_ip_addrs, setup_unit_logger, setup_dual_logger, open_file, file_lines, to_table_lines, new_path
 from chrisbase.time import now, str_delta
 from chrisbase.util import tupled, SP, NO, to_dataframe
 
@@ -488,8 +488,8 @@ class ProjectEnv(TypedData):
         self.command_args = sys.argv[1:]
         self.ip_addrs, self.num_ip_addrs = get_ip_addrs()
         self.output_home = Path(self.output_home).absolute() if self.output_home else None
-        self.logging_file = Path(self.logging_file) if self.logging_file else None
-        self.argument_file = Path(self.argument_file) if self.argument_file else None
+        self.logging_file = new_path(self.logging_file, post=self.time_stamp) if self.logging_file else None
+        self.argument_file = new_path(self.argument_file, post=self.time_stamp) if self.argument_file else None
         self._setup_logger()
 
     def info_env(self):
