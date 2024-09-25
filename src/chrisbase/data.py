@@ -231,7 +231,7 @@ class FileStreamer(Streamer):
     def open(self) -> bool:
         self.path = self.opt.home / self.opt.name
         if "w" in self.opt.mode or "a" in self.opt.mode:
-            self.path.touch()
+            make_parent_dir(self.path).touch()
         if self.path.exists() and self.path.is_file():
             self.fp = open_file(
                 self.path,
