@@ -583,7 +583,7 @@ class CommonArguments(ArgumentGroupData):
 class IOArguments(CommonArguments):
     input: InputOption = field()
     output: OutputOption = field()
-    other: OptionData = field(default=None)
+    option: OptionData | None = field(default=None)
 
     def __post_init__(self):
         super().__post_init__()
@@ -601,7 +601,7 @@ class IOArguments(CommonArguments):
             to_dataframe(columns=columns, raw=self.output.file, data_prefix="output.file") if self.output.file else None,
             to_dataframe(columns=columns, raw=self.output.table, data_prefix="output.table") if self.output.table else None,
             to_dataframe(columns=columns, raw=self.output.index, data_prefix="output.index") if self.output.index else None,
-            to_dataframe(columns=columns, raw=self.other, data_prefix="other"),
+            to_dataframe(columns=columns, raw=self.option, data_prefix="option") if self.option else None,
         ]).reset_index(drop=True)
 
 
