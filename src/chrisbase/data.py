@@ -469,12 +469,12 @@ class ProjectEnv(TypedData):
     calling_sec: float = field(default=0.001)
     waiting_sec: float = field(default=300.0)
     debugging: bool = field(default=False)
-    msg_level: int = field(default=logging.INFO)
-    msg_format: str = field(default=logging.BASIC_FORMAT)
-    date_format: str = field(default="[%m.%d %H:%M:%S]")
-    output_home: str | Path | None = field(default=None)
+    logging_home: str | Path | None = field(default=None)
     logging_file: str | Path | None = field(default=None)
     argument_file: str | Path | None = field(default=None)
+    date_format: str = field(default="[%m.%d %H:%M:%S]")
+    message_level: int = field(default=logging.INFO)
+    message_format: str = field(default=logging.BASIC_FORMAT)
 
     def __post_init__(self):
         self.hostname = get_hostname()
@@ -487,7 +487,7 @@ class ProjectEnv(TypedData):
         self.working_dir = cwd(self.project_path)
         self.command_args = sys.argv[1:]
         self.ip_addrs, self.num_ip_addrs = get_ip_addrs()
-        self.output_home = Path(self.output_home).absolute() if self.output_home else None
+        self.logging_home = Path(self.logging_home).absolute() if self.logging_home else None
         self.logging_file = new_path(self.logging_file, post=self.time_stamp) if self.logging_file else None
         self.argument_file = new_path(self.argument_file, post=self.time_stamp) if self.argument_file else None
         self._setup_logger()
@@ -498,21 +498,21 @@ class ProjectEnv(TypedData):
         return self
 
     def _setup_logger(self):
-        if self.output_home and self.logging_file:
-            setup_dual_logger(level=self.msg_level, fmt=self.msg_format, datefmt=self.date_format, stream=sys.stdout, filename=self.output_home / self.logging_file)
+        if self.logging_home and self.logging_file:
+            setup_dual_logger(level=self.message_level, fmt=self.message_format, datefmt=self.date_format, stream=sys.stdout, filename=self.logging_home / self.logging_file)
         else:
-            setup_unit_logger(level=self.msg_level, fmt=self.msg_format, datefmt=self.date_format, stream=sys.stdout)
+            setup_unit_logger(level=self.message_level, fmt=self.message_format, datefmt=self.date_format, stream=sys.stdout)
         return self
 
     def set_job_name(self, name: str = None):
         self.job_name = name
         return self
 
-    def set_output_home(self, output_home: str | Path | None, absolute: bool = False):
+    def set_logging_home(self, output_home: str | Path | None, absolute: bool = False):
         if absolute:
-            self.output_home = Path(output_home).absolute() if output_home else None
+            self.logging_home = Path(output_home).absolute() if output_home else None
         else:
-            self.output_home = Path(output_home) if output_home else None
+            self.logging_home = Path(output_home) if output_home else None
         self._setup_logger()
 
     def set_logging_file(self, logging_file: str | Path | None):
@@ -555,8 +555,8 @@ class CommonArguments(ArgumentGroupData):
         super().__post_init__()
 
     def save_args(self, to: Path | str = None) -> Path | None:
-        if self.env.output_home and self.env.argument_file:
-            args_file = to if to else self.env.output_home / self.env.argument_file
+        if self.env.logging_home and self.env.argument_file:
+            args_file = to if to else self.env.logging_home / self.env.argument_file
             args_json = self.to_json(default=str, ensure_ascii=False, indent=2)
             make_parent_dir(args_file).write_text(args_json, encoding="utf-8")
             return args_file
@@ -583,6 +583,7 @@ class CommonArguments(ArgumentGroupData):
 class IOArguments(CommonArguments):
     input: InputOption = field()
     output: OutputOption = field()
+    other: OptionData = field(default=None)
 
     def __post_init__(self):
         super().__post_init__()
@@ -600,6 +601,7 @@ class IOArguments(CommonArguments):
             to_dataframe(columns=columns, raw=self.output.file, data_prefix="output.file") if self.output.file else None,
             to_dataframe(columns=columns, raw=self.output.table, data_prefix="output.table") if self.output.table else None,
             to_dataframe(columns=columns, raw=self.output.index, data_prefix="output.index") if self.output.index else None,
+            to_dataframe(columns=columns, raw=self.other, data_prefix="other"),
         ]).reset_index(drop=True)
 
 
