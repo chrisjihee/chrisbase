@@ -94,7 +94,7 @@ class FileOption(StreamOption):
 class TableOption(StreamOption):
     sort: str | List[Tuple[str, int] | str] = field(default="_id")
     find: dict = field(default_factory=dict)
-    timeout: int = field(default=5000)
+    timeout: int = field(default=60 * 1000)
 
 
 @dataclass
@@ -260,7 +260,7 @@ class MongoStreamer(Streamer):
 
     def __len__(self) -> int:
         if self.usable():
-            return self.count(self.opt.find)
+            return self.count(self.opt.find, exact=False)
         else:
             return -1
 
@@ -424,10 +424,10 @@ class InputOption(OutputOption):
     class BatchItems(InputItems):
         batches: Iterable[Iterable[Any]]
 
-    def ready_inputs(self, inputs: Iterable, str_to_dict: bool = False) -> "InputOption.SingleItems | InputOption.BatchItems":
+    def ready_inputs(self, inputs: Iterable, total: int = None, str_to_dict: bool = False) -> "InputOption.SingleItems | InputOption.BatchItems":
         if str_to_dict:
             inputs = map(self.safe_dict, inputs)
-        num_item = max(0, self.total)
+        num_item = max(0, total or self.total)
         if self.start > 0:
             inputs = islice(inputs, self.start, self.total)
             num_item = max(0, min(num_item, num_item - self.start))
