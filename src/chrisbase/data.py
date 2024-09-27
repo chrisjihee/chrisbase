@@ -94,7 +94,7 @@ class FileOption(StreamOption):
 class TableOption(StreamOption):
     sort: str | List[Tuple[str, int] | str] = field(default="_id")
     find: dict = field(default_factory=dict)
-    timeout: int = field(default=60 * 1000)
+    timeout: int = field(default=10 * 1000)
 
 
 @dataclass
