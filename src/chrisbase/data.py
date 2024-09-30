@@ -129,7 +129,7 @@ class Streamer:
             if self.opt.reset:
                 self.reset()
         elif self.opt.required:
-            assert self.usable(), f"Could not open source: opt={self.opt}"
+            assert self.usable(), f"Could not open source: {self.opt}"
         return self
 
     def __exit__(self, *exc_info):
