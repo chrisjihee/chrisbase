@@ -94,7 +94,7 @@ class FileOption(StreamOption):
 class TableOption(StreamOption):
     sort: str | List[Tuple[str, int] | str] = field(default="_id")
     find: dict = field(default_factory=dict)
-    timeout: int = field(default=10 * 1000)
+    timeout: int = field(default=30 * 1000)
 
 
 @dataclass
@@ -253,6 +253,7 @@ class MongoStreamer(Streamer):
         self.cli: MongoClient | None = None
         self.db: pymongo.database.Database | None = None
         self.table: pymongo.collection.Collection | None = None
+        self.server_info: dict | None = None
 
     def __exit__(self, *exc_info):
         if self.cli:
@@ -260,7 +261,7 @@ class MongoStreamer(Streamer):
 
     def __len__(self) -> int:
         if self.usable():
-            return self.count(self.opt.find, exact=False)
+            return self.count(self.opt.find)
         else:
             return -1
 
@@ -280,6 +281,10 @@ class MongoStreamer(Streamer):
         assert len(self.opt.home.parts) >= 2, f"Invalid MongoDB host: {self.opt.home}"
         db_addr, db_name = self.opt.home.parts[:2]
         self.cli = MongoClient(f"mongodb://{db_addr}/?timeoutMS={self.opt.timeout}")
+        try:
+            self.server_info = self.cli.server_info()
+        except pymongo.errors.ServerSelectionTimeoutError:
+            raise AssertionError(f"Could not connect to MongoDB: {self.opt.home}")
         self.db = self.cli.get_database(db_name)
         self.table = self.db.get_collection(f"{self.opt.name}")
         return self.usable()
@@ -289,12 +294,12 @@ class MongoStreamer(Streamer):
             logger.info(f"Drop an existing table: {self.opt}")
             self.db.drop_collection(f"{self.opt.name}")
 
-    def count(self, query: Mapping[str, Any], exact: bool = True) -> int:
+    def count(self, query: Mapping[str, Any] = None) -> int:
         if self.usable():
-            if exact:
-                return self.table.count_documents(query)
-            else:
+            if not query:
                 return self.table.estimated_document_count()
+            else:
+                return self.table.count_documents(query)
         else:
             return -1
 
