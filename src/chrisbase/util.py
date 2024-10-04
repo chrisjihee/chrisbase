@@ -53,6 +53,7 @@ LK = chr(91)  # Left Bracket
 RK = chr(93)  # Right Parenthesis
 DQ = chr(34)  # Double Quote
 SQ = chr(39)  # Single Quote
+US = chr(95)  # Underscore
 
 
 def OK(x: bool):
