@@ -384,7 +384,7 @@ class InputOption(OutputOption):
     limit: int = field(default=-1)
     batch: int = field(default=1)
     inter: int = field(default=10000)
-    total: int = field(default=10000)
+    total: int = field(default=-1)
     data: Iterable | None = field(default=None)
     file: FileOption | None = field(default=None)
     table: TableOption | None = field(default=None)
@@ -432,7 +432,10 @@ class InputOption(OutputOption):
     def ready_inputs(self, inputs: Iterable, total: int = None, str_to_dict: bool = False) -> "InputOption.SingleItems | InputOption.BatchItems":
         if str_to_dict:
             inputs = map(self.safe_dict, inputs)
-        num_item = max(0, total or self.total)
+        if total and total > 0:
+            self.total = total
+        num_item = max(0, self.total)
+        assert num_item > 0, f"Invalid total: num_item={num_item}, total={total}, self.total={self.total}"
         if self.start > 0:
             inputs = islice(inputs, self.start, self.total)
             num_item = max(0, min(num_item, num_item - self.start))
