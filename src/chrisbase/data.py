@@ -414,7 +414,7 @@ class InputOption(OutputOption):
     limit: int = field(default=-1)
     batch: int = field(default=1)
     inter: int = field(default=10000)
-    total: int = field(default=-1)
+    # total: int = field(default=-1)
     data: Iterable | None = field(default=None)
     file: FileOption | None = field(default=None)
     table: TableOption | None = field(default=None)
