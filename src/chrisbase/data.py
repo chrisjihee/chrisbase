@@ -19,6 +19,7 @@ import typer
 from dataclasses_json import DataClassJsonMixin
 from elasticsearch import Elasticsearch
 from more_itertools import ichunked
+from pydantic import BaseModel
 from pymongo import MongoClient
 
 from chrisbase.io import get_hostname, get_hostaddr, current_file, first_or, cwd, hr, flush_or, make_parent_dir, get_ip_addrs, setup_unit_logger, setup_dual_logger, open_file, file_lines, to_table_lines, new_path
@@ -622,7 +623,7 @@ class CommonArguments(ArgumentGroupData):
 class IOArguments(CommonArguments):
     input: InputOption = field()
     output: OutputOption = field()
-    option: OptionData | None = field(default=None)
+    option: BaseModel | None = None
 
     def __post_init__(self):
         super().__post_init__()

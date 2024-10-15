@@ -17,6 +17,7 @@ import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
 import tqdm.std as tqdm_std
+from pydantic import BaseModel
 from sqlalchemy.util import OrderedSet
 
 logger = logging.getLogger(__name__)
@@ -150,7 +151,13 @@ def counts_str(counts, name=None, ks=None, name_fmt='>10', key_fmt='>9', num_fmt
 
 
 def to_dataframe(raw, index=None, exclude=None, columns=None, data_exclude=None, data_prefix=None):
-    if dataclasses.is_dataclass(raw):
+    if isinstance(raw, BaseModel):
+        if not columns:
+            columns = ["key", "value"]
+        raw = {(f"{data_prefix}.{k}" if data_prefix else k): v
+               for k, v in raw.model_dump(exclude=data_exclude).items()}
+        return to_dataframe(raw, index=index, exclude=exclude, columns=columns)
+    elif dataclasses.is_dataclass(raw):
         if not columns:
             columns = ["key", "value"]
         raw = {(f"{data_prefix}.{k}" if data_prefix else k): v
