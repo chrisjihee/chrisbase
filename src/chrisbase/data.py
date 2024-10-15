@@ -89,12 +89,41 @@ class FileOption(StreamOption):
     mode: str = field(default="rb")
     encoding: str = field(default="utf-8")
 
+    @staticmethod
+    def from_path(path: str | Path, name: str | Path | None = None, mode: str = "rb", encoding: str = "utf-8", reset: bool = False, required: bool = False) -> "FileOption":
+        path = Path(path)
+        return FileOption(
+            home=path.parent,
+            name=name if name else path.name,
+            mode=mode,
+            encoding=encoding,
+            reset=reset,
+            required=required,
+        )
+
 
 @dataclass
 class TableOption(StreamOption):
     sort: str | List[Tuple[str, int] | str] = field(default="_id")
     find: dict = field(default_factory=dict)
     timeout: int = field(default=30 * 1000)
+
+    @staticmethod
+    def from_path(path: str | Path, user: str | None = None, pswd: str | None = None,
+                  sort: str | List[Tuple[str, int] | str] = "_id", find: dict | None = None, timeout: int = 30 * 1000,
+                  reset: bool = False, required: bool = False) -> "TableOption":
+        path = Path(path)
+        return TableOption(
+            home=path.parent,
+            name=path.name,
+            user=user,
+            pswd=pswd,
+            sort=sort,
+            find=find if find else {},
+            timeout=timeout,
+            reset=reset,
+            required=required,
+        )
 
 
 @dataclass
