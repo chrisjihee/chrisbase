@@ -22,7 +22,7 @@ from more_itertools import ichunked
 from pydantic import BaseModel
 from pymongo import MongoClient
 
-from chrisbase.io import get_hostname, get_hostaddr, current_file, first_or, cwd, hr, flush_or, make_parent_dir, get_ip_addrs, setup_unit_logger, setup_dual_logger, open_file, file_lines, to_table_lines, new_path
+from chrisbase.io import get_hostname, get_hostaddr, current_file, first_or, cwd, hr, flush_or, make_parent_dir, setup_unit_logger, setup_dual_logger, open_file, file_lines, to_table_lines, new_path, get_http_clients
 from chrisbase.time import now, str_delta
 from chrisbase.util import tupled, SP, NO, to_dataframe
 
@@ -504,7 +504,6 @@ class ProjectEnv(TypedData):
     current_file: Path = field(init=False)
     working_dir: Path = field(init=False)
     command_args: List[str] = field(init=False)
-    num_ip_addrs: int = field(init=False)
     max_workers: int = field(default=1)
     calling_sec: float = field(default=0.001)
     waiting_sec: float = field(default=300.0)
@@ -515,6 +514,7 @@ class ProjectEnv(TypedData):
     date_format: str = field(default="[%m.%d %H:%M:%S]")
     message_level: int = field(default=logging.INFO)
     message_format: str = field(default=logging.BASIC_FORMAT)
+    http_clients = get_http_clients()
 
     def __post_init__(self):
         self.hostname = get_hostname()
@@ -526,7 +526,6 @@ class ProjectEnv(TypedData):
         self.project_path = first_or([x for x in project_path_candidates if x.name.startswith(self.project)]) if self.project else None
         self.working_dir = cwd(self.project_path)
         self.command_args = sys.argv[1:]
-        self.ip_addrs, self.num_ip_addrs = get_ip_addrs()
         self.logging_home = Path(self.logging_home).absolute() if self.logging_home else None
         self.logging_file = new_path(self.logging_file, post=self.time_stamp) if self.logging_file else None
         self.argument_file = new_path(self.argument_file, post=self.time_stamp) if self.argument_file else None
