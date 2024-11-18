@@ -16,6 +16,7 @@ from pathlib import Path
 from time import sleep
 from typing import Iterable
 
+import httpx
 import netifaces
 import pandas as pd
 from tabulate import tabulate
@@ -610,6 +611,7 @@ def get_hostaddr(default="127.0.0.1") -> str:
     except OSError:
         return default
 
+
 def yield_local_addrs():
     for inf in netifaces.interfaces():
         inf_addrs = netifaces.ifaddresses(inf).get(netifaces.AF_INET)
@@ -619,9 +621,37 @@ def yield_local_addrs():
                     yield inf_addr
 
 
-def get_ip_addrs():
-    local_addrs = list(yield_local_addrs())
-    return local_addrs, len(local_addrs)
+class HttpClients(Iterable[httpx.Client]):
+    http_clients = None
+
+    def __init__(self, ip_addrs: Iterable[str]):
+        self.http_clients = [
+            httpx.Client(
+                transport=httpx.HTTPTransport(local_address=ip_addr),
+                timeout=httpx.Timeout(timeout=120.0),
+            ) for ip_addr in ip_addrs
+        ]
+
+    def __iter__(self):
+        return iter(self.http_clients)
+
+    def __len__(self):
+        return len(self.http_clients)
+
+    def __getitem__(self, ii):
+        return self.http_clients[ii % len(self)]
+
+    def get_local_addr(self, ii):
+        return self[ii]._transport._pool._local_address
+
+    def __del__(self):
+        if self.http_clients:
+            for http_client in self.http_clients:
+                http_client.close()
+
+
+def get_http_clients():
+    return HttpClients(yield_local_addrs())
 
 
 def prepend_to_global_path(*xs):
