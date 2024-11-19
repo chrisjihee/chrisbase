@@ -374,6 +374,10 @@ def tsv_lines(*args, **kwargs):
     return map(lambda x: x.split('\t'), all_lines(*args, **kwargs))
 
 
+def key_lines(key, *args, **kwargs):
+    return [x for x in all_lines(*args, **kwargs) if key in x]
+
+
 def new_path(path, post=None, pre=None, sep='-') -> Path:
     path = Path(path)
     new_name = (f"{pre}{sep}" if pre else "") + path.stem + (f"{sep}{post}" if post else "")
