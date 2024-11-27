@@ -9,7 +9,7 @@ from datetime import timedelta
 from io import IOBase
 from itertools import islice
 from pathlib import Path
-from typing import List, Optional, Mapping, Any, Iterable, Tuple
+from typing import List, Optional, Mapping, Any, Iterable, Tuple, ClassVar
 
 import pandas as pd
 import pymongo.collection
@@ -39,10 +39,10 @@ class AppTyper(typer.Typer):
 
 @dataclass
 class TypedData(DataClassJsonMixin):
-    data_type = None
+    data_type: ClassVar[str] = None
 
     def __post_init__(self):
-        self.data_type = self.__class__.__name__
+        TypedData.data_type = self.__class__.__name__
 
 
 @dataclass
