@@ -564,8 +564,8 @@ class ProjectEnv(TypedData):
 
 @dataclass
 class TimeChecker(ResultData):
-    t1 = datetime.now()
-    t2 = datetime.now()
+    t1: datetime = datetime.now()
+    t2: datetime = datetime.now()
     started: str | None = field(default=None)
     settled: str | None = field(default=None)
     elapsed: str | None = field(default=None)
