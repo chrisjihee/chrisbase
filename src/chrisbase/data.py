@@ -1,3 +1,4 @@
+import itertools
 import json
 import logging
 import math
@@ -642,6 +643,21 @@ class IOArguments(CommonArguments):
             to_dataframe(columns=columns, raw=self.output.index, data_prefix="output.index") if self.output.index else None,
             to_dataframe(columns=columns, raw=self.option, data_prefix="option") if self.option else None,
         ]).reset_index(drop=True)
+
+
+@dataclass
+class Counter:
+    step: int = 1
+    _incs = itertools.count()
+    _base = itertools.count()
+
+    def inc(self):
+        for _ in range(self.step):
+            next(self._incs)
+        return self.val()
+
+    def val(self):
+        return next(self._incs) - next(self._base)
 
 
 class RuntimeChecking:
