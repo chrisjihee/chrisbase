@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
-import tqdm.std as tqdm_std
+import tqdm
 from pydantic import BaseModel
 from sqlalchemy.util import OrderedSet
 
@@ -256,21 +256,21 @@ class mute_tqdm_cls:
         self.file = file
         self.aline = '<' if str(aline).strip().lower() == 'left' else '>'
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args, **kwargs) -> tqdm.std.tqdm:
         if 'desc' not in kwargs or not kwargs['desc']:
             kwargs['desc'] = 'processing'
         kwargs['desc'] = self.to_desc(desc=kwargs['desc'],
                                       pre=kwargs.pop('pre') if 'pre' in kwargs else None)
         kwargs.pop('file', None)
         kwargs.pop('bar_format', None)
-        return tqdm_std.tqdm(*args, bar_format=f"{{l_bar}}{{bar:{self.bar_size}}}{{r_bar}}", file=self.file, **kwargs)
+        return tqdm.std.tqdm(*args, bar_format=f"{{l_bar}}{{bar:{self.bar_size}}}{{r_bar}}", file=self.file, **kwargs)
 
     def set_lock(self, *args, **kwargs):
         self._lock = None
-        return tqdm_std.tqdm.set_lock(*args, **kwargs)
+        return tqdm.std.tqdm.set_lock(*args, **kwargs)
 
     def get_lock(self):
-        return tqdm_std.tqdm.get_lock()
+        return tqdm.std.tqdm.get_lock()
 
 
 def terminate_processes(pool: ProcessPoolExecutor):
@@ -288,9 +288,9 @@ def wait_future_jobs(jobs: Iterable[Tuple[int, Future]], pool: ProcessPoolExecut
                 job.result(timeout=timeout)
             except Exception as e:
                 logger.warning(f"{type(e)} on job[{i}]({job})")
-        if isinstance(jobs, tqdm_std.tqdm):
+        if isinstance(jobs, tqdm.std.tqdm):
             if i > 0 and i % interval == 0:
                 logger.info(jobs)
-    if isinstance(jobs, tqdm_std.tqdm):
+    if isinstance(jobs, tqdm.std.tqdm):
         logger.info(jobs)
     terminate_processes(pool)
