@@ -151,30 +151,30 @@ def counts_str(counts, name=None, ks=None, name_fmt='>10', key_fmt='>9', num_fmt
 
 
 def to_dataframe(raw, index=None, exclude=None, columns=None, data_exclude=None, data_prefix=None):
-    if isinstance(raw, BaseModel):
-        if not columns:
-            columns = ["key", "value"]
-        raw = {(f"{data_prefix}.{k}" if data_prefix else k): v
-               for k, v in raw.model_dump(exclude=data_exclude).items()}
-        return to_dataframe(raw, index=index, exclude=exclude, columns=columns)
-    elif dataclasses.is_dataclass(raw):
-        if not columns:
-            columns = ["key", "value"]
+    if not columns:
+        columns = ["key", "value"]
+    if dataclasses.is_dataclass(raw):
         raw = {(f"{data_prefix}.{k}" if data_prefix else k): v
                for k, v in asdict(raw).items()
                if not data_exclude or k not in data_exclude}
         return to_dataframe(raw, index=index, exclude=exclude, columns=columns)
+    elif isinstance(raw, BaseModel):
+        raw = {(f"{data_prefix}.{k}" if data_prefix else k): v
+               for k, v in raw.model_dump(exclude=data_exclude).items()
+               if not data_exclude or k not in data_exclude}
+        return to_dataframe(raw, index=index, exclude=exclude, columns=columns)
+    elif isinstance(raw, dict):
+        raw = {(f"{data_prefix}.{k}" if data_prefix else k): v
+               for k, v in raw.items()
+               if not data_exclude or k not in data_exclude}
+        return pd.DataFrame.from_records(tuple(raw.items()),
+                                         index=index, exclude=exclude, columns=columns)
     elif isinstance(raw, (list, tuple)):
         if raw and isinstance(raw[0], dict):
             return pd.DataFrame.from_records(raw, index=index, exclude=exclude, columns=columns)
         else:
             return pd.DataFrame.from_records([x for x in raw],
                                              index=index, exclude=exclude, columns=columns)
-    elif isinstance(raw, dict):
-        if not columns:
-            columns = ["key", "value"]
-        return pd.DataFrame.from_records(tuple(raw.items()),
-                                         index=index, exclude=exclude, columns=columns)
     else:
         return pd.DataFrame.from_records(raw, index=index, exclude=exclude, columns=columns)
 
