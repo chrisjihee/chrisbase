@@ -729,8 +729,8 @@ class JobTimer:
             if self.args:
                 self.args.time.set_started()
                 if self.verbose:
-                    self.args.save_args()
                     self.args.info_args()
+                    self.args.save_args()
             self.t1 = datetime.now()
             return self
         except Exception as e:
