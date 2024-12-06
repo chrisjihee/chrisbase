@@ -719,3 +719,23 @@ def update_existing_handlers(handlers, debug=False):
                     x.addHandler(h)
                 if debug:
                     logger.debug(f"logging.getLogger({x.name:<20s}) = Logger(level={x.level}, handlers={x.handlers}, disabled={x.disabled}, propagate={x.propagate}, parent={x.parent})")
+
+
+def set_verbosity_debug(*names):
+    for name in names:
+        logging.getLogger(name).setLevel(logging.DEBUG)
+
+
+def set_verbosity_info(*names):
+    for name in names:
+        logging.getLogger(name).setLevel(logging.INFO)
+
+
+def set_verbosity_warning(*names):
+    for name in names:
+        logging.getLogger(name).setLevel(logging.WARNING)
+
+
+def set_verbosity_error(*names):
+    for name in names:
+        logging.getLogger(name).setLevel(logging.ERROR)

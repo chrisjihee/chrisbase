@@ -31,11 +31,12 @@ logger = logging.getLogger(__name__)
 
 
 class AppTyper(typer.Typer):
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         super().__init__(
+            *args,
             add_completion=False,
             pretty_exceptions_enable=False,
-        )
+            **kwargs)
 
 
 @dataclass
