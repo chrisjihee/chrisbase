@@ -199,10 +199,15 @@ def str_table(tabular_data, headers=(), tablefmt="pipe", showindex="default", tr
         if showindex is True or showindex == "default" or showindex == "always" or \
                 not isinstance(showindex, str) and isinstance(showindex, Iterable) and len(showindex) != len(tabular_data):
             if transposed_df:
+                index_header = '#'
+                if tabular_data.index.name:
+                    index_header = tabular_data.index.name
+                elif tabular_data.index.names:
+                    index_header = ' '.join(tabular_data.index.names)
                 if isinstance(tabular_data.columns, pd.RangeIndex):
-                    headers = ['key'] + list(map(str(range(1, len(tabular_data.columns) + 1))))
+                    headers = [index_header] + list(map(str(range(1, len(tabular_data.columns) + 1))))
                 else:
-                    headers = ['key'] + list(tabular_data.columns)
+                    headers = [index_header] + list(tabular_data.columns)
             else:
                 headers = ['#'] + list(tabular_data.columns)
                 showindex = range(1, len(tabular_data) + 1)
