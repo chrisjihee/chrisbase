@@ -652,12 +652,12 @@ class Counter:
     _incs = itertools.count()
     _base = itertools.count()
 
-    def inc(self):
+    def inc(self) -> int:
         for _ in range(self.step):
             next(self._incs)
         return self.val()
 
-    def val(self):
+    def val(self) -> int:
         return next(self._incs) - next(self._base)
 
 
