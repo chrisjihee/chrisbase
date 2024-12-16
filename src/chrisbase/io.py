@@ -3,6 +3,7 @@ import gzip
 import json
 import logging
 import os
+import re
 import shutil
 import socket
 import subprocess
@@ -19,10 +20,9 @@ from typing import Iterable
 import httpx
 import netifaces
 import pandas as pd
-from tabulate import tabulate
-
 from chrisbase.time import from_timestamp
 from chrisbase.util import tupled, NO, OX
+from tabulate import tabulate
 
 logger = logging.getLogger(__name__)
 sys_stdout = sys.stdout
@@ -458,6 +458,22 @@ def load_json(path: str | Path, **kwargs) -> dict:
     except Exception as e:
         print(f"Error occurred from [load_json(path={path})]", file=sys_stderr)
         raise RuntimeError(f"Please validate json file!\n- path: {path}\n- type: {type(e).__qualname__}\n- detail: {e}")
+
+
+# define function to normalize simple list in json
+def normalize_simple_list_in_json(json_input):
+    json_output = []
+    pattern = re.compile(r"\[[^\[\]]+?]")
+    if re.search(pattern, json_input):
+        pre_end = 0
+        for m in re.finditer(pattern, json_input):
+            json_output.append(m.string[pre_end: m.start()])
+            json_output.append("[" + " ".join(m.group().split()).removeprefix("[ ").removesuffix(" ]") + "]")
+            pre_end = m.end()
+        json_output.append(m.string[pre_end:])
+        return ''.join(json_output)
+    else:
+        return json_input
 
 
 def open_file(path: str | Path, mode: str = "rb", **kwargs) -> IOBase:
