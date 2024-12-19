@@ -57,30 +57,30 @@ class NewProjectEnv(BaseModel):
     command_args: list[str] = sys.argv[1:]
     logging_home: str | Path = Field(default=None)
     logging_file: str | Path = Field(default=None)
+    logging_level: str = Field(default="info")
+    logging_format: str = Field(default=logging.BASIC_FORMAT)
+    datetime_format: str = Field(default="[%m.%d %H:%M:%S]")
     argument_file: str | Path = Field(default=None)
     random_seed: int = Field(default=None)
     max_workers: int = Field(default=1)
     debugging: bool = Field(default=False)
-    date_format: str = Field(default="[%m.%d %H:%M:%S]")
-    message_level: int = Field(default=logging.INFO)
-    message_format: str = Field(default=logging.BASIC_FORMAT)
 
     @model_validator(mode='after')
     def after(self) -> Self:
         self.logging_home = Path(self.logging_home).absolute() if self.logging_home else None
         return self
 
-    def setup_logger(self, logging_home: str | Path | None = None):
+    def setup_logger(self, logging_home: str | Path | None = None, level: int = logging.INFO):
         if logging_home:
             self.logging_home = Path(logging_home).absolute()
         if self.logging_home and self.logging_file:
             setup_dual_logger(
-                level=self.message_level, fmt=self.message_format, datefmt=self.date_format, stream=sys.stdout,
-                filename=self.logging_home / new_path(self.logging_file, post=self.time_stamp),
+                level=level, fmt=self.logging_format, datefmt=self.datetime_format, stream=sys.stdout,
+                filename=self.logging_home / self.logging_file,
             )
         else:
             setup_unit_logger(
-                level=self.message_level, fmt=self.message_format, datefmt=self.date_format, stream=sys.stdout,
+                level=level, fmt=self.logging_format, datefmt=self.datetime_format, stream=sys.stdout,
             )
         return self
 
@@ -126,7 +126,7 @@ class NewCommonArguments(BaseModel):
 
     def save_args(self, to: Path | str = None) -> Path | None:
         if self.env.logging_home and self.env.argument_file:
-            args_file = to if to else self.env.logging_home / new_path(self.env.argument_file, post=self.env.time_stamp)
+            args_file = to if to else self.env.logging_home / self.env.argument_file
             args_json = self.model_dump_json(indent=2)
             make_parent_dir(args_file).write_text(args_json, encoding="utf-8")
             return args_file
