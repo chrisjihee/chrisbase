@@ -4,13 +4,15 @@ import logging
 import math
 import sys
 import warnings
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from dataclasses import field
 from datetime import datetime
 from datetime import timedelta
 from io import IOBase
 from itertools import islice
 from pathlib import Path
-from typing import List, Optional, Mapping, Any, Iterable, Tuple, ClassVar
+from typing import List, Optional
+from typing import Mapping, Any, Iterable, Tuple, ClassVar
 
 import pandas as pd
 import pymongo.collection
@@ -21,7 +23,9 @@ from dataclasses_json import DataClassJsonMixin
 from elasticsearch import Elasticsearch
 from more_itertools import ichunked
 from pydantic import BaseModel
+from pydantic import Field, model_validator
 from pymongo import MongoClient
+from typing_extensions import Self
 
 from chrisbase.io import get_hostname, get_hostaddr, current_file, first_or, cwd, hr, flush_or, make_parent_dir, setup_unit_logger, setup_dual_logger, open_file, file_lines, to_table_lines, new_path, get_http_clients
 from chrisbase.time import now, str_delta
@@ -37,6 +41,97 @@ class AppTyper(typer.Typer):
             add_completion=False,
             pretty_exceptions_enable=False,
             **kwargs)
+
+
+class NewProjectEnv(BaseModel):
+    hostname: str = get_hostname()
+    hostaddr: str = get_hostaddr()
+    global_rank: int = Field(default=-1)
+    local_rank: int = Field(default=-1)
+    node_rank: int = Field(default=-1)
+    world_size: int = Field(default=-1)
+    time_stamp: str = Field(default=now('%m%d.%H%M%S'))
+    python_path: Path = Path(sys.executable).absolute()
+    current_dir: Path = Path().absolute()
+    current_file: Path = current_file().absolute()
+    command_args: list[str] = sys.argv[1:]
+    logging_home: str | Path = Field(default=None)
+    logging_file: str | Path = Field(default=None)
+    argument_file: str | Path = Field(default=None)
+    random_seed: int = Field(default=None)
+    max_workers: int = Field(default=1)
+    debugging: bool = Field(default=False)
+    date_format: str = Field(default="[%m.%d %H:%M:%S]")
+    message_level: int = Field(default=logging.INFO)
+    message_format: str = Field(default=logging.BASIC_FORMAT)
+
+    @model_validator(mode='after')
+    def after(self) -> Self:
+        self.logging_home = Path(self.logging_home).absolute() if self.logging_home else None
+        return self
+
+    def setup_logger(self, logging_home: str | Path | None = None):
+        if logging_home:
+            self.logging_home = Path(logging_home).absolute()
+        if self.logging_home and self.logging_file:
+            setup_dual_logger(
+                level=self.message_level, fmt=self.message_format, datefmt=self.date_format, stream=sys.stdout,
+                filename=self.logging_home / new_path(self.logging_file, post=self.time_stamp),
+            )
+        else:
+            setup_unit_logger(
+                level=self.message_level, fmt=self.message_format, datefmt=self.date_format, stream=sys.stdout,
+            )
+        return self
+
+
+class TimeChecker(BaseModel):
+    t1: datetime = datetime.now()
+    t2: datetime = datetime.now()
+    started: str | None = Field(default=None)
+    settled: str | None = Field(default=None)
+    elapsed: str | None = Field(default=None)
+
+    def set_started(self):
+        self.started = now()
+        self.settled = None
+        self.elapsed = None
+        self.t1 = datetime.now()
+        return self
+
+    def set_settled(self):
+        self.t2 = datetime.now()
+        self.settled = now()
+        self.elapsed = str_delta(self.t2 - self.t1)
+        return self
+
+
+class NewCommonArguments(BaseModel):
+    env: NewProjectEnv = Field(default=None)
+    time: TimeChecker = Field(default_factory=TimeChecker)
+
+    def dataframe(self, columns=None) -> pd.DataFrame:
+        if not columns:
+            columns = [self.__class__.__name__, "value"]
+        df = pd.concat([
+            to_dataframe(columns=columns, raw=self.env, data_prefix="env"),
+            to_dataframe(columns=columns, raw=self.time, data_prefix="time"),
+        ]).reset_index(drop=True)
+        return df
+
+    def info_args(self):
+        for line in to_table_lines(self.dataframe()):
+            logger.info(line)
+        return self
+
+    def save_args(self, to: Path | str = None) -> Path | None:
+        if self.env.logging_home and self.env.argument_file:
+            args_file = to if to else self.env.logging_home / new_path(self.env.argument_file, post=self.env.time_stamp)
+            args_json = self.model_dump_json(indent=2)
+            make_parent_dir(args_file).write_text(args_json, encoding="utf-8")
+            return args_file
+        else:
+            return None
 
 
 @dataclass
@@ -565,28 +660,6 @@ class ProjectEnv(TypedData):
 
 
 @dataclass
-class TimeChecker(ResultData):
-    t1: datetime = datetime.now()
-    t2: datetime = datetime.now()
-    started: str | None = field(default=None)
-    settled: str | None = field(default=None)
-    elapsed: str | None = field(default=None)
-
-    def set_started(self):
-        self.started = now()
-        self.settled = None
-        self.elapsed = None
-        self.t1 = datetime.now()
-        return self
-
-    def set_settled(self):
-        self.t2 = datetime.now()
-        self.settled = now()
-        self.elapsed = str_delta(self.t2 - self.t1)
-        return self
-
-
-@dataclass
 class CommonArguments(ArgumentGroupData):
     tag = None
     env: ProjectEnv = field()
@@ -675,7 +748,7 @@ class RuntimeChecking:
 
 
 class JobTimer:
-    def __init__(self, name=None, args: CommonArguments = None, prefix=None, postfix=None,
+    def __init__(self, name=None, args: CommonArguments | NewCommonArguments = None, prefix=None, postfix=None,
                  verbose=True, mt=0, mb=0, pt=0, pb=0, rt=0, rb=0, rc='-', rw=137,
                  flush_sec=0.1, mute_loggers=None, mute_warning=None):
         self.name = name
