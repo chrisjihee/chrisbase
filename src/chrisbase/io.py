@@ -768,3 +768,12 @@ def set_verbosity_warning(*names):
 def set_verbosity_error(*names):
     for name in names:
         logging.getLogger(name).setLevel(logging.ERROR)
+
+
+def do_nothing(*args, **kwargs):
+    pass
+
+
+def info_r(x, *y, **z):
+    x = str(x).rstrip()
+    logger.info(x, *y, **z)
