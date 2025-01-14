@@ -70,17 +70,17 @@ class NewProjectEnv(BaseModel):
         self.logging_home = Path(self.logging_home).absolute() if self.logging_home else None
         return self
 
-    def setup_logger(self, logging_home: str | Path | None = None, level: int = logging.INFO):
+    def setup_logger(self, logging_home: str | Path | None = None, logging_level: int = logging.INFO):
         if logging_home:
             self.logging_home = Path(logging_home).absolute()
         if self.logging_home and self.logging_file:
             setup_dual_logger(
-                level=level, fmt=self.logging_format, datefmt=self.datetime_format, stream=sys.stdout,
+                level=logging_level, fmt=self.logging_format, datefmt=self.datetime_format, stream=sys.stdout,
                 filename=self.logging_home / self.logging_file,
             )
         else:
             setup_unit_logger(
-                level=level, fmt=self.logging_format, datefmt=self.datetime_format, stream=sys.stdout,
+                level=logging_level, fmt=self.logging_format, datefmt=self.datetime_format, stream=sys.stdout,
             )
         return self
 
