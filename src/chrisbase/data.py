@@ -11,8 +11,8 @@ from datetime import timedelta
 from io import IOBase
 from itertools import islice
 from pathlib import Path
-from typing import List, Optional
-from typing import Mapping, Any, Iterable, Tuple, ClassVar
+from typing import Any, Callable, Optional, ClassVar
+from typing import Iterable, List, Tuple, Mapping
 
 import pandas as pd
 import pymongo.collection
@@ -41,6 +41,12 @@ class AppTyper(typer.Typer):
             add_completion=False,
             pretty_exceptions_enable=False,
             **kwargs)
+
+    @staticmethod
+    def run(function: Callable[..., Any], **kwargs) -> None:
+        app = AppTyper(**kwargs)
+        app.command()(function)
+        app()
 
 
 class NewProjectEnv(BaseModel):
