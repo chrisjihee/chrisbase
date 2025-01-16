@@ -21,6 +21,7 @@ import pymongo.errors
 import typer
 from dataclasses_json import DataClassJsonMixin
 from elasticsearch import Elasticsearch
+from lightning.fabric.loggers import CSVLogger
 from more_itertools import ichunked
 from pydantic import BaseModel
 from pydantic import Field, model_validator
@@ -61,7 +62,9 @@ class NewProjectEnv(BaseModel):
     current_dir: Path = Path().absolute()
     current_file: Path = current_file().absolute()
     command_args: list[str] = sys.argv[1:]
-    logging_home: str | Path = Field(default=None)
+    output_home: str | Path = Field(default="output")
+    output_name: str | Path = Field(default=None)
+    run_version: str | int | Path | None = Field(default=None)
     logging_file: str | Path = Field(default=None)
     logging_level: str = Field(default="info")
     logging_format: str = Field(default=logging.BASIC_FORMAT)
@@ -70,19 +73,21 @@ class NewProjectEnv(BaseModel):
     random_seed: int = Field(default=None)
     max_workers: int = Field(default=1)
     debugging: bool = Field(default=False)
+    output_dir: Path | None = Field(default=None, init=False)
+    csv_logger: CSVLogger | None = Field(default=None, init=False)
 
     @model_validator(mode='after')
     def after(self) -> Self:
-        self.logging_home = Path(self.logging_home).absolute() if self.logging_home else None
+        if self.output_home:
+            self.csv_logger = CSVLogger(self.output_home, self.output_name, self.run_version, flush_logs_every_n_steps=1)
+            self.output_dir = Path(self.csv_logger.log_dir)
         return self
 
-    def setup_logger(self, logging_home: str | Path | None = None, logging_level: int = logging.INFO):
-        if logging_home:
-            self.logging_home = Path(logging_home).absolute()
-        if self.logging_home and self.logging_file:
+    def setup_logger(self, logging_level: int = logging.INFO):
+        if self.output_dir and self.logging_file:
             setup_dual_logger(
                 level=logging_level, fmt=self.logging_format, datefmt=self.datetime_format, stream=sys.stdout,
-                filename=self.logging_home / self.logging_file,
+                filename=self.output_dir / self.logging_file,
             )
         else:
             setup_unit_logger(
@@ -131,8 +136,8 @@ class NewCommonArguments(BaseModel):
         return self
 
     def save_args(self, to: Path | str = None) -> Path | None:
-        if self.env.logging_home and self.env.argument_file:
-            args_file = to if to else self.env.logging_home / self.env.argument_file
+        if self.env.output_home and self.env.argument_file:
+            args_file = to if to else self.env.output_home / self.env.argument_file
             args_json = self.model_dump_json(indent=2)
             make_parent_dir(args_file).write_text(args_json, encoding="utf-8")
             return args_file
