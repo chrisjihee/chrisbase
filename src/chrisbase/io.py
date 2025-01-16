@@ -38,16 +38,16 @@ class LoggingFormat:
     BRIEF_12: str = ' ┇ '.join(['%(asctime)s', '%(name)12s', '%(message)s'])
     BRIEF_16: str = ' ┇ '.join(['%(asctime)s', '%(name)16s', '%(message)s'])
     BRIEF_20: str = ' ┇ '.join(['%(asctime)s', '%(name)20s', '%(message)s'])
-    CHECK_00: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-8s', '%(message)s'])
-    CHECK_12: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-8s', '%(name)12s', '%(message)s'])
-    CHECK_16: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-8s', '%(name)16s', '%(message)s'])
-    CHECK_20: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-8s', '%(name)20s', '%(message)s'])
-    CHECK_24: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-8s', '%(name)24s', '%(message)s'])
-    CHECK_28: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-8s', '%(name)28s', '%(message)s'])
-    CHECK_32: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-8s', '%(name)32s', '%(message)s'])
-    CHECK_36: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-8s', '%(name)36s', '%(message)s'])
-    CHECK_40: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-8s', '%(name)40s', '%(message)s'])
-    CHECK_48: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-8s', '%(name)48s', '%(message)s'])
+    CHECK_00: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(message)s'])
+    CHECK_12: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(name)12s', '%(message)s'])
+    CHECK_16: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(name)16s', '%(message)s'])
+    CHECK_20: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(name)20s', '%(message)s'])
+    CHECK_24: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(name)24s', '%(message)s'])
+    CHECK_28: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(name)28s', '%(message)s'])
+    CHECK_32: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(name)32s', '%(message)s'])
+    CHECK_36: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(name)36s', '%(message)s'])
+    CHECK_40: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(name)40s', '%(message)s'])
+    CHECK_48: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(name)48s', '%(message)s'])
     TRACE_12: str = ' ┇ '.join(['%(asctime)s', '%(filename)12s:%(lineno)-4d', '%(message)s'])
     TRACE_16: str = ' ┇ '.join(['%(asctime)s', '%(filename)16s:%(lineno)-4d', '%(message)s'])
     TRACE_20: str = ' ┇ '.join(['%(asctime)s', '%(filename)20s:%(lineno)-4d', '%(message)s'])
@@ -56,16 +56,16 @@ class LoggingFormat:
     TRACE_32: str = ' ┇ '.join(['%(asctime)s', '%(filename)32s:%(lineno)-4d', '%(message)s'])
     TRACE_36: str = ' ┇ '.join(['%(asctime)s', '%(filename)36s:%(lineno)-4d', '%(message)s'])
     TRACE_40: str = ' ┇ '.join(['%(asctime)s', '%(filename)40s:%(lineno)-4d', '%(message)s'])
-    DEBUG_00: str = ' ┇ '.join(['%(pathname)60s:%(lineno)-5d', '%(asctime)s', '%(levelname)-8s', '%(message)s'])
-    DEBUG_12: str = ' ┇ '.join(['%(pathname)60s:%(lineno)-5d', '%(asctime)s', '%(levelname)-8s', '%(name)12s', '%(message)s'])
-    DEBUG_16: str = ' ┇ '.join(['%(pathname)60s:%(lineno)-5d', '%(asctime)s', '%(levelname)-8s', '%(name)16s', '%(message)s'])
-    DEBUG_20: str = ' ┇ '.join(['%(pathname)70s:%(lineno)-5d', '%(asctime)s', '%(levelname)-8s', '%(name)20s', '%(message)s'])
-    DEBUG_24: str = ' ┇ '.join(['%(pathname)70s:%(lineno)-5d', '%(asctime)s', '%(levelname)-8s', '%(name)24s', '%(message)s'])
-    DEBUG_28: str = ' ┇ '.join(['%(pathname)70s:%(lineno)-5d', '%(asctime)s', '%(levelname)-8s', '%(name)28s', '%(message)s'])
-    DEBUG_32: str = ' ┇ '.join(['%(pathname)90s:%(lineno)-5d', '%(asctime)s', '%(levelname)-8s', '%(name)32s', '%(message)s'])
-    DEBUG_36: str = ' ┇ '.join(['%(pathname)90s:%(lineno)-5d', '%(asctime)s', '%(levelname)-8s', '%(name)36s', '%(message)s'])
-    DEBUG_40: str = ' ┇ '.join(['%(pathname)120s:%(lineno)-5d', '%(asctime)s', '%(levelname)-8s', '%(name)40s', '%(message)s'])
-    DEBUG_48: str = ' ┇ '.join(['%(pathname)120s:%(lineno)-5d', '%(asctime)s', '%(levelname)-8s', '%(name)48s', '%(message)s'])
+    DEBUG_00: str = ' ┇ '.join(['%(pathname)60s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(message)s'])
+    DEBUG_12: str = ' ┇ '.join(['%(pathname)60s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)12s', '%(message)s'])
+    DEBUG_16: str = ' ┇ '.join(['%(pathname)60s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)16s', '%(message)s'])
+    DEBUG_20: str = ' ┇ '.join(['%(pathname)70s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)20s', '%(message)s'])
+    DEBUG_24: str = ' ┇ '.join(['%(pathname)70s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)24s', '%(message)s'])
+    DEBUG_28: str = ' ┇ '.join(['%(pathname)70s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)28s', '%(message)s'])
+    DEBUG_32: str = ' ┇ '.join(['%(pathname)90s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)32s', '%(message)s'])
+    DEBUG_36: str = ' ┇ '.join(['%(pathname)90s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)36s', '%(message)s'])
+    DEBUG_40: str = ' ┇ '.join(['%(pathname)120s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)40s', '%(message)s'])
+    DEBUG_48: str = ' ┇ '.join(['%(pathname)120s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)48s', '%(message)s'])
 
 
 class MuteStd:
@@ -163,8 +163,8 @@ def current_file(known_path: Path or str = None) -> Path:
 
 
 def hr(c="=", w=137, t=0, b=0, title=''):
-    # w=137-26 : %(asctime)s %(levelname)-8s %(message)s
-    # w=137-47 : %(asctime)s %(levelname)-8s %(filename)15s:%(lineno)-4d %(message)s
+    # w=137-26 : %(asctime)s %(levelname)-7s %(message)s
+    # w=137-47 : %(asctime)s %(levelname)-7s %(filename)15s:%(lineno)-4d %(message)s
     # w=137 (for ipynb on Chrome using D2Coding 13pt) with scroll
     # w=139 (for ipynb on Chrome using D2Coding 13pt) without scroll
     # w=165 (for ipynb on GitHub using D2Coding 13pt)
