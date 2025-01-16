@@ -23,8 +23,7 @@ from dataclasses_json import DataClassJsonMixin
 from elasticsearch import Elasticsearch
 from lightning.fabric.loggers import CSVLogger
 from more_itertools import ichunked
-from pydantic import BaseModel
-from pydantic import Field, model_validator
+from pydantic import BaseModel, Field, PrivateAttr, model_validator
 from pymongo import MongoClient
 from typing_extensions import Self
 
@@ -74,13 +73,13 @@ class NewProjectEnv(BaseModel):
     max_workers: int = Field(default=1)
     debugging: bool = Field(default=False)
     output_dir: Path | None = Field(default=None, init=False)
-    csv_logger: CSVLogger | None = Field(default=None, init=False)
+    _csv_logger: CSVLogger | None = PrivateAttr(default=None)
 
     @model_validator(mode='after')
     def after(self) -> Self:
         if self.output_home:
-            self.csv_logger = CSVLogger(self.output_home, self.output_name, self.run_version, flush_logs_every_n_steps=1)
-            self.output_dir = Path(self.csv_logger.log_dir)
+            self._csv_logger = CSVLogger(self.output_home, self.output_name, self.run_version, flush_logs_every_n_steps=1)
+            self.output_dir = Path(self._csv_logger.log_dir)
         return self
 
     def setup_logger(self, logging_level: int = logging.INFO):
