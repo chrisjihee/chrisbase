@@ -1,3 +1,4 @@
+import time
 from datetime import datetime, timedelta, timezone
 
 
@@ -6,12 +7,18 @@ def elasped_sec(x, *args, **kwargs):
     return x(*args, **kwargs), datetime.now() - t1
 
 
-def now(fmt='[%m.%d %H:%M:%S]', prefix=None):
+def now(fmt='[%m.%d %H:%M:%S]', prefix=None, delay=0):
+    if delay:
+        time.sleep(delay)
     if prefix:
         return f"{prefix} {datetime.now().strftime(fmt)}"
     else:
         return datetime.now().strftime(fmt)
 
+def now_stamp(delay=0):
+    if delay:
+        time.sleep(delay)
+    return datetime.now().timestamp()
 
 def after(delta: timedelta, fmt='[%m.%d %H:%M:%S]', prefix=None):
     if prefix:
