@@ -59,7 +59,7 @@ class NewProjectEnv(BaseModel):
     time_stamp: str = Field(default=now('%m%d.%H%M%S'))
     python_path: Path = Path(sys.executable).absolute()
     current_dir: Path = Path().absolute()
-    current_file: Path = current_file().absolute()
+    current_file: Path = Path(sys.argv[0])
     command_args: list[str] = sys.argv[1:]
     output_home: str | Path = Field(default="output")
     output_name: str | Path = Field(default=None)
@@ -135,8 +135,8 @@ class NewCommonArguments(BaseModel):
         return self
 
     def save_args(self, to: Path | str = None) -> Path | None:
-        if self.env.output_home and self.env.argument_file:
-            args_file = to if to else self.env.output_home / self.env.argument_file
+        if self.env.output_dir and self.env.argument_file:
+            args_file = to if to else self.env.output_dir / self.env.argument_file
             args_json = self.model_dump_json(indent=2)
             make_parent_dir(args_file).write_text(args_json, encoding="utf-8")
             return args_file
