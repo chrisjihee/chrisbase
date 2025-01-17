@@ -2,6 +2,7 @@ import itertools
 import json
 import logging
 import math
+import random
 import sys
 import warnings
 from dataclasses import dataclass
@@ -56,7 +57,7 @@ class NewProjectEnv(BaseModel):
     local_rank: int = Field(default=-1)
     node_rank: int = Field(default=-1)
     world_size: int = Field(default=-1)
-    time_stamp: str = Field(default=now('%m%d.%H%M%S'))
+    time_stamp: str = Field(default=now('%m%d.%H%M%S', delay=random.randint(1, 100) / 10.0))  # TODO: remove delay
     python_path: Path = Path(sys.executable).absolute()
     current_dir: Path = Path().absolute()
     current_file: Path = Path(sys.argv[0])
