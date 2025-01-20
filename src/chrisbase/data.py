@@ -2,7 +2,6 @@ import itertools
 import json
 import logging
 import math
-import random
 import sys
 import warnings
 from dataclasses import dataclass
@@ -57,7 +56,7 @@ class NewProjectEnv(BaseModel):
     local_rank: int = Field(default=-1)
     node_rank: int = Field(default=-1)
     world_size: int = Field(default=-1)
-    time_stamp: str = Field(default=now('%m%d.%H%M%S', delay=random.randint(1, 100) / 10.0))  # TODO: remove delay
+    time_stamp: str = Field(default=now('%m%d.%H%M%S'))
     python_path: Path = Path(sys.executable).absolute()
     current_dir: Path = Path().absolute()
     current_file: Path = Path(sys.argv[0])
@@ -79,8 +78,21 @@ class NewProjectEnv(BaseModel):
     @model_validator(mode='after')
     def after(self) -> Self:
         if self.output_home:
-            self._csv_logger = CSVLogger(self.output_home, self.output_name, self.run_version, flush_logs_every_n_steps=1)
-            self.output_dir = Path(self._csv_logger.log_dir)
+            self.update_run_version(self.run_version)
+        return self
+
+    def suffix_argument_file(self, suffix: str) -> Path:
+        self.argument_file = new_path(self.argument_file, post=suffix)
+        return self.argument_file
+
+    def suffix_logging_file(self, suffix: str) -> Path:
+        self.logging_file = new_path(self.logging_file, post=suffix)
+        return self.logging_file
+
+    def update_run_version(self, run_version: str | int | Path | None):
+        self.run_version = run_version
+        self._csv_logger = CSVLogger(self.output_home, self.output_name, self.run_version, flush_logs_every_n_steps=1)
+        self.output_dir = Path(self._csv_logger.log_dir)
         return self
 
     def setup_logger(self, logging_level: int = logging.INFO):

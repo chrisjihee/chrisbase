@@ -7,7 +7,7 @@ def elasped_sec(x, *args, **kwargs):
     return x(*args, **kwargs), datetime.now() - t1
 
 
-def now(fmt='[%m.%d %H:%M:%S]', prefix=None, delay=0):
+def now(fmt='[%m.%d %H:%M:%S]', prefix=None, delay=0) -> str:
     if delay:
         time.sleep(delay)
     if prefix:
@@ -15,10 +15,6 @@ def now(fmt='[%m.%d %H:%M:%S]', prefix=None, delay=0):
     else:
         return datetime.now().strftime(fmt)
 
-def now_stamp(delay=0):
-    if delay:
-        time.sleep(delay)
-    return datetime.now().timestamp()
 
 def after(delta: timedelta, fmt='[%m.%d %H:%M:%S]', prefix=None):
     if prefix:
@@ -34,7 +30,13 @@ def before(delta: timedelta, fmt='[%m.%d %H:%M:%S]', prefix=None):
         return (datetime.now() - delta).strftime(fmt)
 
 
-def from_timestamp(stamp, fmt='%Y/%m/%d %H:%M:%S'):
+def now_stamp(delay=0) -> float:
+    if delay:
+        time.sleep(delay)
+    return datetime.now().timestamp()
+
+
+def from_timestamp(stamp, fmt='[%m.%d %H:%M:%S]'):
     return datetime.fromtimestamp(stamp, tz=timezone.utc).astimezone().strftime(fmt)
 
 
