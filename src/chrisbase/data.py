@@ -65,7 +65,7 @@ class NewProjectEnv(BaseModel):
     output_name: str | Path = Field(default=None)
     run_version: str | int | Path | None = Field(default=None)
     logging_file: str | Path = Field(default=None)
-    logging_level: str = Field(default="info")
+    logging_level: int = Field(default=logging.INFO)
     logging_format: str = Field(default=logging.BASIC_FORMAT)
     datetime_format: str = Field(default="[%m.%d %H:%M:%S]")
     argument_file: str | Path = Field(default=None)
@@ -79,6 +79,7 @@ class NewProjectEnv(BaseModel):
     def after(self) -> Self:
         if self.output_home:
             self.update_run_version(self.run_version)
+            self.setup_logger(self.logging_level)
         return self
 
     def suffix_argument_file(self, suffix: str) -> Path:
