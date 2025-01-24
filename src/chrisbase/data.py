@@ -749,6 +749,12 @@ class Counter:
     _incs = itertools.count()
     _base = itertools.count()
 
+    def __str__(self):
+        return f"Counter(val={self.val()}, step={self.step})"
+
+    def __repr__(self):
+        return f"Counter(val={self.val()}, step={self.step})"
+
     def inc(self) -> int:
         for _ in range(self.step):
             next(self._incs)
