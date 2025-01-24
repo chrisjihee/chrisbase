@@ -1,4 +1,5 @@
 import bz2
+import csv
 import gzip
 import json
 import logging
@@ -15,14 +16,16 @@ from ipaddress import IPv4Address
 from itertools import chain
 from pathlib import Path
 from time import sleep
-from typing import Iterable
+from typing import Iterable, List
 
 import httpx
 import netifaces
 import pandas as pd
+from tabulate import tabulate
+from tensorboard.backend.event_processing import event_accumulator
+
 from chrisbase.time import from_timestamp
 from chrisbase.util import tupled, NO, OX
-from tabulate import tabulate
 
 logger = logging.getLogger(__name__)
 sys_stdout = sys.stdout
@@ -298,7 +301,7 @@ def parents_and_children(path):
     return list(path.parents) + [path] + [x.absolute() for x in dirs("*")]
 
 
-def paths(path, accept_fn=lambda _: True):
+def paths(path, accept_fn=lambda _: True) -> List[Path]:
     assert path, f"No path: {path}"
     path = Path(path)
     if any(c in str(path.parent) for c in ["*", "?"]):
@@ -308,20 +311,20 @@ def paths(path, accept_fn=lambda _: True):
     return sorted([x for x in chain.from_iterable(parent.glob(path.name) for parent in parents) if accept_fn(x)])
 
 
-def dirs(path):
+def dirs(path) -> List[Path]:
     return paths(path, accept_fn=lambda x: x.is_dir())
 
 
-def files(path):
+def files(path) -> List[Path]:
     return paths(path, accept_fn=lambda x: x.is_file())
 
 
-def glob_dirs(path, glob: str):
+def glob_dirs(path, glob: str) -> List[Path]:
     path = Path(path)
     return sorted([x for x in path.glob(glob) if x.is_dir()])
 
 
-def glob_files(path, glob: str):
+def glob_files(path, glob: str) -> List[Path]:
     path = Path(path)
     return sorted([x for x in path.glob(glob) if x.is_file()])
 
@@ -777,3 +780,38 @@ def do_nothing(*args, **kwargs):
 def info_r(x, *y, **z):
     x = str(x).rstrip()
     logger.info(x, *y, **z)
+
+
+def tb_events_to_csv(
+        event_file: str | Path,  # 단일 event 파일 경로 (예: "output/runs/events.out.tfevents.xxxx")
+        output_file: str | Path,  # 내보낼 CSV 경로
+        purge_orphaned_data=True,
+):
+    """
+    지정한 TensorBoard 이벤트 로그(event_file)를 파싱하여
+    CSV로 저장합니다.
+
+    - out_csv_path가 이미 존재하면 덮어씁니다.
+    - event_file에 여러 Scalar 태그가 존재할 경우, 모든 태그를 모아
+      [wall_time, step, tag, value] 형태로 CSV 파일에 기록합니다.
+    """
+    ea = event_accumulator.EventAccumulator(
+        str(event_file),
+        purge_orphaned_data=purge_orphaned_data  # or False
+    )
+    ea.Reload()
+    scalar_tags = ea.Tags().get("scalars", [])
+
+    with open(output_file, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["wall_time", "step", "tag", "value"])  # CSV 헤더
+
+        for tag in scalar_tags:
+            # ea.Scalars(tag)는 해당 tag로 기록된 전체 log를 리스트 형태로 반환
+            for event in ea.Scalars(tag):
+                writer.writerow([
+                    event.wall_time,  # float(Unix 시간)
+                    event.step,  # int(전역 global_step)
+                    tag,  # 예: "eval/loss", "train/loss" 등
+                    event.value  # 실제 측정값
+                ])
