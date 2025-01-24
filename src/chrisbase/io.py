@@ -71,6 +71,35 @@ class LoggingFormat:
     DEBUG_48: str = ' ┇ '.join(['%(pathname)120s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)48s', '%(message)s'])
 
 
+class LoggerWriter:
+    def __init__(self, logger: logging.Logger, level: int = logging.INFO):
+        """
+        A simple wrapper to use a logger like a file-like stream.
+
+        :param logger: The logger instance to which messages will be sent.
+        :param level: Logging level to use (default: logging.INFO).
+        """
+        self.logger = logger
+        self.level = level
+
+    def write(self, msg: str):
+        """
+        Emulates the behavior of a stream's write method.
+        Non-empty lines are forwarded to the logger at the given level.
+        """
+        # Strip out extra whitespace/newlines and only log non-empty lines
+        msg = msg.rstrip()
+        if msg:
+            self.logger.log(self.level, msg)
+
+    def flush(self):
+        """
+        Emulates the behavior of a stream's flush method.
+        In this context, we generally do not need to do anything special for flush.
+        """
+        pass
+
+
 class MuteStd:
     def __init__(self, out=None, err=None, flush_sec=0.0, mute_warning=None, mute_logger=None):
         self.mute = open(os.devnull, 'w')
