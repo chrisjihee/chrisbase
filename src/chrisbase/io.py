@@ -319,6 +319,10 @@ def files(path) -> List[Path]:
     return paths(path, accept_fn=lambda x: x.is_file())
 
 
+def non_empty_files(path) -> List[Path]:
+    return paths(path, accept_fn=lambda x: x.is_file() and x.stat().st_size > 0)
+
+
 def glob_dirs(path, glob: str) -> List[Path]:
     path = Path(path)
     return sorted([x for x in path.glob(glob) if x.is_dir()])
