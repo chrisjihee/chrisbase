@@ -848,3 +848,16 @@ def tb_events_to_csv(
                     tag,  # 예: "eval/loss", "train/loss" 등
                     event.value  # 실제 측정값
                 ])
+
+
+def convert_all_events_in_dir(log_dir: str | Path):
+    """
+    Converts all TensorBoard event files in `log_dir` to CSV.
+    Each event file produces a separate CSV file.
+    """
+    input_files = os.path.join(log_dir, "**/events.out.tfevents.*")
+    for input_file in files(input_files):
+        if not input_file.name.endswith(".csv"):
+            output_file = input_file.with_name(input_file.name + ".csv")
+            logger.info(f"Convert {input_file} to csv")
+            tb_events_to_csv(input_file, output_file)
