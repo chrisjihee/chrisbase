@@ -21,13 +21,12 @@ import pymongo.errors
 import typer
 from dataclasses_json import DataClassJsonMixin
 from elasticsearch import Elasticsearch
-from lightning.fabric.loggers import CSVLogger
 from more_itertools import ichunked
-from pydantic import BaseModel, Field, PrivateAttr, model_validator
+from pydantic import BaseModel, Field, model_validator
 from pymongo import MongoClient
 from typing_extensions import Self
 
-from chrisbase.io import get_hostname, get_hostaddr, current_file, first_or, cwd, hr, flush_or, make_parent_dir, setup_unit_logger, setup_dual_logger, open_file, file_lines, to_table_lines, new_path, get_http_clients
+from chrisbase.io import get_hostname, get_hostaddr, current_file, first_or, cwd, hr, flush_or, make_parent_dir, setup_unit_logger, setup_dual_logger, open_file, file_lines, new_path, get_http_clients, log_table
 from chrisbase.time import now, str_delta
 from chrisbase.util import tupled, SP, NO, to_dataframe
 
@@ -64,6 +63,7 @@ class NewProjectEnv(BaseModel):
     output_home: str | Path = Field(default="output")
     output_name: str | Path = Field(default=None)
     run_version: str | int | Path | None = Field(default=None)
+    output_file: str | Path = Field(default=None)
     logging_file: str | Path = Field(default=None)
     logging_level: int = Field(default=logging.INFO)
     logging_format: str = Field(default=logging.BASIC_FORMAT)
@@ -73,27 +73,17 @@ class NewProjectEnv(BaseModel):
     max_workers: int = Field(default=1)
     debugging: bool = Field(default=False)
     output_dir: Path | None = Field(default=None, init=False)
-    _csv_logger: CSVLogger | None = PrivateAttr(default=None)
 
     @model_validator(mode='after')
     def after(self) -> Self:
         if self.output_home:
-            self.update_run_version(self.run_version)
-            self.setup_logger(self.logging_level)
-        return self
-
-    def suffix_argument_file(self, suffix: str) -> Path:
-        self.argument_file = new_path(self.argument_file, post=suffix)
-        return self.argument_file
-
-    def suffix_logging_file(self, suffix: str) -> Path:
-        self.logging_file = new_path(self.logging_file, post=suffix)
-        return self.logging_file
-
-    def update_run_version(self, run_version: str | int | Path | None):
-        self.run_version = run_version
-        self._csv_logger = CSVLogger(self.output_home, self.output_name, self.run_version, flush_logs_every_n_steps=1)
-        self.output_dir = Path(self._csv_logger.log_dir)
+            self.output_home = Path(self.output_home)
+            self.output_dir = self.output_home
+            if self.output_name:
+                self.output_dir = self.output_dir / self.output_name
+            if self.run_version:
+                self.output_dir = self.output_dir / str(self.run_version)
+        self.setup_logger(self.logging_level)
         return self
 
     def setup_logger(self, logging_level: int = logging.INFO):
@@ -143,9 +133,8 @@ class NewCommonArguments(BaseModel):
         ]).reset_index(drop=True)
         return df
 
-    def info_args(self):
-        for line in to_table_lines(self.dataframe()):
-            logger.info(line)
+    def info_args(self, c="-", w=137):
+        log_table(logger, self.dataframe(), c=c, w=w, level=logging.INFO, tablefmt="tsv", bordered=True)
         return self
 
     def save_args(self, to: Path | str = None) -> Path | None:
@@ -652,9 +641,8 @@ class ProjectEnv(TypedData):
         self.argument_file = new_path(self.argument_file, post=self.time_stamp) if self.argument_file else None
         self._setup_logger()
 
-    def info_env(self):
-        for line in to_table_lines(to_dataframe(self)):
-            logger.info(line)
+    def info_env(self, c="-", w=137):
+        log_table(logger, to_dataframe(self), c=c, w=w, level=logging.INFO, tablefmt="tsv", bordered=True)
         return self
 
     def _setup_logger(self):
@@ -701,9 +689,8 @@ class CommonArguments(ArgumentGroupData):
         else:
             return None
 
-    def info_args(self):
-        for line in to_table_lines(self.dataframe()):
-            logger.info(line)
+    def info_args(self, c="-", w=137):
+        log_table(logger, self.dataframe(), c=c, w=w, level=logging.INFO, tablefmt="tsv", bordered=True)
         return self
 
     def dataframe(self, columns=None) -> pd.DataFrame:
@@ -833,7 +820,7 @@ class JobTimer:
             if self.args:
                 self.args.time.set_started()
                 if self.verbose:
-                    self.args.info_args()
+                    self.args.info_args(c='-', w=self.rw)
                     self.args.save_args()
             self.t1 = datetime.now()
             return self
