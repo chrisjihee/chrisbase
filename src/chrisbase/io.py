@@ -234,7 +234,7 @@ def err_hr(*args, **kwargs):
     file_hr(*args, file=sys_stderr, **kwargs)
 
 
-def str_table(tabular_data, headers=(), tablefmt="pipe", showindex="default", transposed_df=False, **kwargs):
+def str_table(tabular_data, headers=(), tablefmt="plain", showindex="default", transposed_df=False, **kwargs):
     if not headers and isinstance(tabular_data, pd.DataFrame):
         if showindex is True or showindex == "default" or showindex == "always" or \
                 not isinstance(showindex, str) and isinstance(showindex, Iterable) and len(showindex) != len(tabular_data):
@@ -256,13 +256,21 @@ def str_table(tabular_data, headers=(), tablefmt="pipe", showindex="default", tr
     return tabulate(tabular_data, headers=headers, tablefmt=tablefmt, showindex=showindex, **kwargs)
 
 
-def to_table_lines(*args, tablefmt="presto", border_idx=1, **kwargs):
+def to_table_lines(*args, c="-", w=137, left='', tablefmt="plain", header_idx=0, bordered=False, **kwargs):
     table = str_table(*args, **kwargs, tablefmt=tablefmt)
     lines = table.splitlines()
-    border = lines[border_idx]
-    lines = [border] + lines + [border]
-    for line in lines:
+    if bordered:
+        border = hr(c=c, w=w)
+        lines = ([border] + lines[:header_idx + 1] +
+                 [border] + lines[header_idx + 1:] +
+                 [border])
+    for line in lines if not left else [left + line for line in lines]:
         yield line
+
+
+def log_table(my_logger, *args, c="-", w=137, level=logging.INFO, **kwargs):
+    for line in to_table_lines(*args, **kwargs, c=c, w=w):
+        my_logger.log(level, line)
 
 
 def file_table(*args, file=sys_stdout, **kwargs):
