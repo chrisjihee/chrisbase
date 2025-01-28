@@ -22,7 +22,7 @@ import typer
 from dataclasses_json import DataClassJsonMixin
 from elasticsearch import Elasticsearch
 from more_itertools import ichunked
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, ConfigDict
 from pymongo import MongoClient
 from typing_extensions import Self
 
@@ -145,6 +145,32 @@ class NewCommonArguments(BaseModel):
             return args_file
         else:
             return None
+
+
+class NewIOArguments(NewCommonArguments):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    input: "InputOption" = Field(default=None)
+    output: "OutputOption" = Field(default=None)
+    option: BaseModel | None = None
+
+    def __post_init__(self):
+        super().__post_init__()
+
+    def dataframe(self, columns=None) -> pd.DataFrame:
+        if not columns:
+            columns = [self.__class__.__name__, "value"]
+        return pd.concat([
+            super().dataframe(columns=columns),
+            to_dataframe(columns=columns, raw=self.input, data_prefix="input", data_exclude=["file", "table", "index"]),
+            to_dataframe(columns=columns, raw=self.input.file, data_prefix="input.file") if self.input.file else None,
+            to_dataframe(columns=columns, raw=self.input.table, data_prefix="input.table") if self.input.table else None,
+            to_dataframe(columns=columns, raw=self.input.index, data_prefix="input.index") if self.input.index else None,
+            to_dataframe(columns=columns, raw=self.output, data_prefix="output", data_exclude=["file", "table", "index"]),
+            to_dataframe(columns=columns, raw=self.output.file, data_prefix="output.file") if self.output.file else None,
+            to_dataframe(columns=columns, raw=self.output.table, data_prefix="output.table") if self.output.table else None,
+            to_dataframe(columns=columns, raw=self.output.index, data_prefix="output.index") if self.output.index else None,
+            to_dataframe(columns=columns, raw=self.option, data_prefix="option") if self.option else None,
+        ]).reset_index(drop=True)
 
 
 @dataclass
