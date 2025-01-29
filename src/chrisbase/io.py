@@ -869,3 +869,7 @@ def convert_all_events_in_dir(log_dir: str | Path):
             output_file = input_file.with_name(input_file.name + ".csv")
             logger.info(f"Convert {input_file} to csv")
             tb_events_to_csv(input_file, output_file)
+
+
+def strip_lines(text):
+    return "\n".join([line.strip() for line in text.splitlines()])
