@@ -150,24 +150,27 @@ def counts_str(counts, name=None, ks=None, name_fmt='>10', key_fmt='>9', num_fmt
     return head + body
 
 
-def to_dataframe(raw, index=None, exclude=None, columns=None, data_exclude=None, data_prefix=None):
+def to_dataframe(raw, index=None, exclude=None, columns=None, data_exclude=None, data_prefix=None, sorted_keys=False):
     if not columns:
         columns = ["key", "value"]
     if dataclasses.is_dataclass(raw):
-        raw = {(f"{data_prefix}.{k}" if data_prefix else k): v
-               for k, v in asdict(raw).items()
-               if not data_exclude or k not in data_exclude}
-        return to_dataframe(raw, index=index, exclude=exclude, columns=columns)
+        raw_dict = asdict(raw)
+        raw_dict = {(f"{data_prefix}.{k}" if data_prefix else k): raw_dict[k]
+                    for k in (sorted(raw_dict.keys()) if sorted_keys else raw_dict.keys())
+                    if not data_exclude or k not in data_exclude}
+        return to_dataframe(raw_dict, index=index, exclude=exclude, columns=columns)
     elif isinstance(raw, BaseModel):
-        raw = {(f"{data_prefix}.{k}" if data_prefix else k): v
-               for k, v in raw.model_dump(exclude=data_exclude).items()
-               if not data_exclude or k not in data_exclude}
-        return to_dataframe(raw, index=index, exclude=exclude, columns=columns)
+        raw_dict = raw.model_dump(exclude=data_exclude)
+        raw_dict = {(f"{data_prefix}.{k}" if data_prefix else k): raw_dict[k]
+                    for k in (sorted(raw_dict.keys()) if sorted_keys else raw_dict.keys())
+                    if not data_exclude or k not in data_exclude}
+        return to_dataframe(raw_dict, index=index, exclude=exclude, columns=columns)
     elif isinstance(raw, dict):
-        raw = {(f"{data_prefix}.{k}" if data_prefix else k): v
-               for k, v in raw.items()
-               if not data_exclude or k not in data_exclude}
-        return pd.DataFrame.from_records(tuple(raw.items()),
+        raw_dict = raw
+        raw_dict = {(f"{data_prefix}.{k}" if data_prefix else k): raw_dict[k]
+                    for k in (sorted(raw_dict.keys()) if sorted_keys else raw_dict.keys())
+                    if not data_exclude or k not in data_exclude}
+        return pd.DataFrame.from_records(tuple(raw_dict.items()),
                                          index=index, exclude=exclude, columns=columns)
     elif isinstance(raw, (list, tuple)):
         if raw and isinstance(raw[0], dict):
