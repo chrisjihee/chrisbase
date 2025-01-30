@@ -437,7 +437,7 @@ def key_lines(key, *args, **kwargs):
 
 def new_path(path, post=None, pre=None, sep='-') -> Path:
     path = Path(path)
-    new_name = (f"{pre}{sep}" if pre else "") + path.stem + (f"{sep}{post}" if post else "")
+    new_name = (f"{pre}{sep}" if pre is not None else "") + path.stem + (f"{sep}{post}" if post is not None else "")
     return path.parent / (new_name + NO.join(path.suffixes))
 
 
