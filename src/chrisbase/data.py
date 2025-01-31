@@ -356,7 +356,7 @@ class FileStreamer(Streamer):
     def __init__(self, opt: FileOption | None):
         super().__init__(opt=opt)
         self.opt: FileOption = opt
-        self.path: Path | None = None
+        self.path: Path = self.opt.home / self.opt.name
         self.fp: IOBase | None = None
 
     def __exit__(self, *exc_info):
