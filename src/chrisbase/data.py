@@ -792,7 +792,7 @@ class RuntimeChecking:
 
 class JobTimer:
     def __init__(self, name=None, args: CommonArguments | NewCommonArguments = None, prefix=None, postfix=None,
-                 verbose=True, mt=0, mb=0, pt=0, pb=0, rt=0, rb=0, rc='-', rw=137,
+                 verbose=1, mt=0, mb=0, pt=0, pb=0, rt=0, rb=0, rc='-', rw=137,
                  flush_sec=0.1, mute_loggers=None, mute_warning=None):
         self.name = name
         self.args = args
@@ -807,7 +807,7 @@ class JobTimer:
         self.rb: int = rb
         self.rc: str = rc
         self.rw: int = rw
-        self.verbose: bool = verbose
+        self.verbose: int = verbose
         assert isinstance(mute_loggers, (type(None), str, list, tuple, set))
         assert isinstance(mute_warning, (type(None), str, list, tuple, set))
         self.mute_loggers = tupled(mute_loggers)
@@ -827,7 +827,7 @@ class JobTimer:
                 for x in self.mute_warning:
                     warnings.filterwarnings('ignore', category=UserWarning, module=x)
             flush_or(sys.stdout, sys.stderr, sec=self.flush_sec if self.flush_sec else None)
-            if self.verbose:
+            if self.verbose > 0:
                 if self.mt > 0:
                     for _ in range(self.mt):
                         logger.info('')
@@ -845,8 +845,9 @@ class JobTimer:
                 flush_or(sys.stdout, sys.stderr, sec=self.flush_sec if self.flush_sec else None)
             if self.args:
                 self.args.time.set_started()
-                if self.verbose:
+                if self.verbose >= 1:
                     self.args.info_args(c='-', w=self.rw)
+                if self.verbose >= 2:
                     self.args.save_args()
             self.t1 = datetime.now()
             return self
@@ -859,11 +860,12 @@ class JobTimer:
         try:
             if self.args:
                 self.args.time.set_settled()
-                self.args.save_args()
+                if self.verbose >= 2:
+                    self.args.save_args()
             self.t2 = datetime.now()
             self.td = self.t2 - self.t1
             flush_or(sys.stdout, sys.stderr, sec=self.flush_sec if self.flush_sec else None)
-            if self.verbose:
+            if self.verbose > 0:
                 if self.pb > 0:
                     for _ in range(self.pb):
                         logger.info('')
