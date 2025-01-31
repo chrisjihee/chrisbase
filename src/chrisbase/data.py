@@ -893,7 +893,11 @@ class JobTimer:
             exit(22)
 
 
-def find_sublist_range(haystack, sublist):
+def find_sublist_range(haystack: List[Any], sublist: List[Any], case_sensitive: bool = True) -> List[int]:
+    if not case_sensitive:
+        haystack = [x.lower() if isinstance(x, str) else x for x in haystack]
+        sublist = [x.lower() if isinstance(x, str) else x for x in sublist]
+
     sub_len = len(sublist)
     for i in range(len(haystack) - sub_len + 1):
         if haystack[i:i + sub_len] == sublist:
