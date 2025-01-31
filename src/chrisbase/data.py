@@ -891,3 +891,11 @@ class JobTimer:
         except Exception as e:
             logger.error(f"[JobTimer.__exit__()] [{type(e)}] {e}")
             exit(22)
+
+
+def find_sublist_range(haystack, sublist):
+    sub_len = len(sublist)
+    for i in range(len(haystack) - sub_len + 1):
+        if haystack[i:i + sub_len] == sublist:
+            return list(range(i, i + sub_len))
+    return list()
