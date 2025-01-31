@@ -26,7 +26,7 @@ from pydantic import BaseModel, Field, model_validator, ConfigDict
 from pymongo import MongoClient
 from typing_extensions import Self
 
-from chrisbase.io import get_hostname, get_hostaddr, current_file, first_or, cwd, hr, flush_or, make_parent_dir, setup_unit_logger, setup_dual_logger, open_file, file_lines, new_path, get_http_clients, log_table
+from chrisbase.io import get_hostname, get_hostaddr, current_file, first_or, cwd, hr, flush_or, make_parent_dir, setup_unit_logger, setup_dual_logger, open_file, file_lines, new_path, get_http_clients, log_table, LoggingFormat
 from chrisbase.time import now, str_delta
 from chrisbase.util import tupled, SP, NO, to_dataframe
 
@@ -66,7 +66,7 @@ class NewProjectEnv(BaseModel):
     output_file: str | Path = Field(default=None)
     logging_file: str | Path = Field(default=None)
     logging_level: int = Field(default=logging.INFO)
-    logging_format: str = Field(default=logging.BASIC_FORMAT)
+    logging_format: str = Field(default=LoggingFormat.BRIEF_00)
     datetime_format: str = Field(default="[%m.%d %H:%M:%S]")
     argument_file: str | Path = Field(default=None)
     random_seed: int = Field(default=None)
