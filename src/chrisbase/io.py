@@ -427,12 +427,32 @@ def all_lines(path, mini=None):
         return map(lambda x: x.rstrip(), inp.readlines() if full else inp.readlines()[:mini])
 
 
+def all_line_list(path, mini=None):
+    return list(all_lines(path, mini))
+
+
 def tsv_lines(*args, **kwargs):
     return map(lambda x: x.split('\t'), all_lines(*args, **kwargs))
 
 
 def key_lines(key, *args, **kwargs):
     return [x for x in all_lines(*args, **kwargs) if key in x]
+
+
+def text_blocks(path) -> Iterable[List[str]]:
+    block = []
+    with open(path, mode="r", encoding="utf-8") as f:
+        for line in f:
+            stripped = line.strip()
+            if not stripped:
+                if block:
+                    yield block
+                    block = []
+            else:
+                block.append(stripped)
+
+        if block:
+            yield block
 
 
 def new_path(path, post=None, pre=None, sep='-') -> Path:
