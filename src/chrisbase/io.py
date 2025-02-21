@@ -443,13 +443,13 @@ def text_blocks(path) -> Iterable[List[str]]:
     block = []
     with open(path, mode="r", encoding="utf-8") as f:
         for line in f:
-            stripped = line.strip()
-            if not stripped:
+            line = line[:-1]
+            if not line:
                 if block:
                     yield block
                     block = []
             else:
-                block.append(stripped)
+                block.append(line)
 
         if block:
             yield block
