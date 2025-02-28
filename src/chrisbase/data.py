@@ -42,9 +42,10 @@ class AppTyper(typer.Typer):
             **kwargs)
 
     @staticmethod
-    def run(function: Callable[..., Any], **kwargs) -> None:
+    def run(*functions: Callable[..., Any], **kwargs) -> None:
         app = AppTyper(**kwargs)
-        app.command()(function)
+        for function in functions:
+            app.command()(function)
         app()
 
 
