@@ -256,20 +256,25 @@ def str_table(tabular_data, headers=(), tablefmt="plain", showindex="default", t
     return tabulate(tabular_data, headers=headers, tablefmt=tablefmt, showindex=showindex, **kwargs)
 
 
-def to_table_lines(*args, c="-", w=137, left='', tablefmt="plain", header_idx=0, bordered=False, **kwargs):
+def to_table_lines(*args, left='', tablefmt="plain", header_idx=0, border_idx=-1, **kwargs):
     table = str_table(*args, **kwargs, tablefmt=tablefmt)
     lines = table.splitlines()
-    if bordered:
-        border = hr(c=c, w=w)
-        lines = ([border] + lines[:header_idx + 1] +
-                 [border] + lines[header_idx + 1:] +
-                 [border])
+    if border_idx >= 0:
+        border = lines[border_idx]
+        lines = (
+                [] +
+                [border] +
+                lines[:header_idx + 1] +
+                lines[header_idx + 1:] +
+                [border] +
+                []
+        )
     for line in lines if not left else [left + line for line in lines]:
         yield line
 
 
-def log_table(my_logger, *args, c="-", w=137, level=logging.INFO, **kwargs):
-    for line in to_table_lines(*args, **kwargs, c=c, w=w):
+def log_table(my_logger, *args, level=logging.INFO, **kwargs):
+    for line in to_table_lines(*args, **kwargs):
         my_logger.log(level, line)
 
 
