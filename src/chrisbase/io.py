@@ -256,10 +256,15 @@ def str_table(tabular_data, headers=(), tablefmt="plain", showindex="default", t
     return tabulate(tabular_data, headers=headers, tablefmt=tablefmt, showindex=showindex, **kwargs)
 
 
-def to_table_lines(*args, left='', tablefmt="plain", header_idx=0, border_idx=-1, **kwargs):
+def to_table_lines(*args, left='', c="-", w=137, tablefmt="plain", header_idx=0, border_idx=-1, bordered=False, **kwargs):
     table = str_table(*args, **kwargs, tablefmt=tablefmt)
     lines = table.splitlines()
-    if border_idx >= 0:
+    if bordered:
+        border = hr(c=c, w=w)
+        lines = ([border] + lines[:header_idx + 1] +
+                 [border] + lines[header_idx + 1:] +
+                 [border])
+    elif border_idx >= 0:
         border = lines[border_idx]
         lines = (
                 [] +
