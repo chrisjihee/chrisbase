@@ -62,7 +62,7 @@ class NewProjectEnv(BaseModel):
     current_file: Path = Path(sys.argv[0])
     command_args: list[str] = sys.argv[1:]
     output_home: str | Path = Field(default="output")
-    output_name: str | Path = Field(default=None)
+    output_name: str | Path | None = Field(default=None)
     run_version: str | int | Path | None = Field(default=None)
     output_file: str | Path = Field(default=None)
     logging_file: str | Path = Field(default=None)
