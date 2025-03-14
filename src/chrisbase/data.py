@@ -70,7 +70,7 @@ class NewProjectEnv(BaseModel):
     logging_format: str = Field(default=LoggingFormat.BRIEF_00)
     datetime_format: str = Field(default="[%m.%d %H:%M:%S]")
     argument_file: str | Path = Field(default=None)
-    random_seed: int = Field(default=None)
+    random_seed: int = Field(default=7)
     max_workers: int = Field(default=1)
     debugging: bool = Field(default=False)
     output_dir: Path | None = Field(default=None, init=False)
