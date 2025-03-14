@@ -407,7 +407,7 @@ def file_size(path):
     return Path(path).stat().st_size
 
 
-def file_lines(file):
+def file_lines(file, encoding='utf-8'):
     def blocks(f, size=65536):
         while True:
             block = f.read(size)
@@ -415,43 +415,43 @@ def file_lines(file):
                 break
             yield block
 
-    with Path(file).open() as inp:
+    with Path(file).open(encoding=encoding) as inp:
         return sum(b.count("\n") for b in blocks(inp))
 
 
-def num_lines(path, mini=None):
+def num_lines(path, encoding='utf-8', mini=None):
     assert path, f"No path: {path}"
     path = Path(path)
     full = not mini or mini <= 0
     if not full:
         return mini
-    with path.open() as inp:
+    with path.open(encoding=encoding) as inp:
         return sum(1 for _ in inp)
 
 
-def all_lines(path, mini=None):
+def all_lines(path, encoding='utf-8', mini=None):
     assert path, f"No path: {path}"
     path = Path(path)
     full = not mini or mini <= 0
-    with path.open() as inp:
+    with path.open(encoding=encoding) as inp:
         return map(lambda x: x.rstrip(), inp.readlines() if full else inp.readlines()[:mini])
 
 
-def all_line_list(path, mini=None):
-    return list(all_lines(path, mini))
+def all_line_list(path, encoding='utf-8', mini=None):
+    return list(all_lines(path, encoding=encoding, mini=mini))
 
 
-def tsv_lines(*args, **kwargs):
-    return map(lambda x: x.split('\t'), all_lines(*args, **kwargs))
+def tsv_lines(*args, encoding='utf-8', **kwargs):
+    return map(lambda x: x.split('\t'), all_lines(*args, encoding=encoding, **kwargs))
 
 
-def key_lines(key, *args, **kwargs):
-    return [x for x in all_lines(*args, **kwargs) if key in x]
+def key_lines(key, *args, encoding='utf-8', **kwargs):
+    return [x for x in all_lines(*args, encoding=encoding, **kwargs) if key in x]
 
 
-def text_blocks(path) -> Iterable[List[str]]:
+def text_blocks(path, encoding='utf-8') -> Iterable[List[str]]:
     block = []
-    with open(path, mode="r", encoding="utf-8") as f:
+    with open(path, mode="r", encoding=encoding) as f:
         for line in f:
             line = line[:-1]
             if not line:
