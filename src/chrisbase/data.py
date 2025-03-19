@@ -29,6 +29,7 @@ from typing_extensions import Self
 from chrisbase.io import get_hostname, get_hostaddr, current_file, first_or, cwd, hr, flush_or, make_parent_dir, setup_unit_logger, setup_dual_logger, open_file, file_lines, new_path, get_http_clients, log_table, LoggingFormat
 from chrisbase.time import now, str_delta
 from chrisbase.util import tupled, SP, NO, to_dataframe
+from transformers import set_seed
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +86,9 @@ class NewProjectEnv(BaseModel):
             if self.run_version:
                 self.output_dir = self.output_dir / str(self.run_version)
         self.setup_logger(self.logging_level)
+        if self.random_seed:
+            set_seed(self.random_seed)
+            logger.info(f"Set random seed to {self.random_seed}")
         return self
 
     def setup_logger(self, logging_level: int = logging.INFO):
