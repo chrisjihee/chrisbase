@@ -467,8 +467,8 @@ def text_blocks(path, encoding='utf-8') -> Iterable[List[str]]:
 
 def new_path(path, post=None, pre=None, sep='-') -> Path:
     path = Path(path)
-    new_name = (f"{pre}{sep}" if pre is not None else "") + path.stem + (f"{sep}{post}" if post is not None else "")
-    return path.parent / (new_name + NO.join(path.suffixes))
+    new_stem = (f"{pre}{sep}" if pre is not None else "") + path.stem + (f"{sep}{post}" if post is not None else "")
+    return path.parent / (new_stem + path.suffix)
 
 
 def new_file(infile, outfiles, blank=('', '*', '?')) -> Path:
