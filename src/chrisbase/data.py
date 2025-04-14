@@ -19,17 +19,16 @@ import pymongo.collection
 import pymongo.database
 import pymongo.errors
 import typer
-from dataclasses_json import DataClassJsonMixin
-from elasticsearch import Elasticsearch
-from more_itertools import ichunked
-from pydantic import BaseModel, Field, model_validator, ConfigDict
-from pymongo import MongoClient
-from typing_extensions import Self
-
 from chrisbase.io import get_hostname, get_hostaddr, current_file, first_or, cwd, hr, flush_or, make_parent_dir, setup_unit_logger, setup_dual_logger, open_file, file_lines, new_path, get_http_clients, log_table, LoggingFormat
 from chrisbase.time import now, str_delta
 from chrisbase.util import tupled, SP, NO, to_dataframe
+from dataclasses_json import DataClassJsonMixin
+from elasticsearch import Elasticsearch
+from more_itertools import ichunked
+from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator
+from pymongo import MongoClient
 from transformers import set_seed
+from typing_extensions import Self
 
 logger = logging.getLogger(__name__)
 
@@ -68,13 +67,28 @@ class NewProjectEnv(BaseModel):
     output_file: str | Path = Field(default=None)
     logging_file: str | Path = Field(default=None)
     logging_level: int = Field(default=logging.INFO)
-    logging_format: str = Field(default=LoggingFormat.BRIEF_00)
+    logging_format: LoggingFormat = Field(default=LoggingFormat.BRIEF_00)
     datetime_format: str = Field(default="[%m.%d %H:%M:%S]")
     argument_file: str | Path = Field(default=None)
     random_seed: int = Field(default=None)
     max_workers: int = Field(default=1)
     debugging: bool = Field(default=False)
     output_dir: Path | None = Field(default=None, init=False)
+
+    @field_validator('logging_format', mode='before')
+    def validate_logging_format(cls, v):
+        # 만약 입력값이 문자열이라면, 해당 문자열이 LoggingFormat의 멤버 이름과 일치하는지 확인
+        if isinstance(v, str):
+            try:
+                # 간단하게 Enum 멤버 이름으로 변환
+                return LoggingFormat[v]
+            except KeyError:
+                # 만약 Enum 멤버 이름이 아니라면, 실제 값과 일치하는지 체크
+                for member in LoggingFormat:
+                    if v == member.value:
+                        return member
+                raise ValueError(f"Invalid logging_format: {v}.")
+        return v
 
     @model_validator(mode='after')
     def after(self) -> Self:
@@ -94,12 +108,18 @@ class NewProjectEnv(BaseModel):
     def setup_logger(self, logging_level: int = logging.INFO):
         if self.output_dir and self.logging_file:
             setup_dual_logger(
-                level=logging_level, fmt=self.logging_format, datefmt=self.datetime_format, stream=sys.stdout,
+                level=logging_level,
+                fmt=self.logging_format.value,
+                datefmt=self.datetime_format,
+                stream=sys.stdout,
                 filename=self.output_dir / self.logging_file,
             )
         else:
             setup_unit_logger(
-                level=logging_level, fmt=self.logging_format, datefmt=self.datetime_format, stream=sys.stdout,
+                level=logging_level,
+                fmt=self.logging_format.value,
+                datefmt=self.datetime_format,
+                stream=sys.stdout,
             )
         return self
 
