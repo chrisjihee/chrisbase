@@ -49,6 +49,19 @@ class AppTyper(typer.Typer):
         app()
 
 
+class HydraProjectEnv(BaseModel):
+    hostname: str = get_hostname()
+    hostaddr: str = get_hostaddr()
+    local_rank: int = Field(default=-1)
+    world_size: int = Field(default=-1)
+    time_stamp: str = Field(default=now('%m%d-%H%M%S'))
+    python_path: Path = Path(sys.executable).absolute()
+    current_dir: Path = Path().absolute()
+    current_file: Path = Path(sys.argv[0])
+    command_args: list[str] = sys.argv[1:]
+    max_workers: int = Field(default=1)
+
+
 class NewProjectEnv(BaseModel):
     hostname: str = get_hostname()
     hostaddr: str = get_hostaddr()
