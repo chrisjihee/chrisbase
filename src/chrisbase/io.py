@@ -21,54 +21,55 @@ from typing import Iterable, List
 import httpx
 import netifaces
 import pandas as pd
+from chrisbase.time import from_timestamp
+from chrisbase.util import tupled, OX
 from tabulate import tabulate
 from tensorboard.backend.event_processing import event_accumulator
-
-from chrisbase.time import from_timestamp
-from chrisbase.util import tupled, NO, OX
 
 logger = logging.getLogger(__name__)
 sys_stdout = sys.stdout
 sys_stderr = sys.stderr
 
+from enum import Enum
 
-class LoggingFormat:
-    PRINT_00: str = ' ┇ '.join(['%(message)s'])
-    PRINT_12: str = ' ┇ '.join(['%(name)12s', '%(message)s'])
-    PRINT_16: str = ' ┇ '.join(['%(name)16s', '%(message)s'])
-    PRINT_20: str = ' ┇ '.join(['%(name)20s', '%(message)s'])
-    BRIEF_00: str = ' ┇ '.join(['%(asctime)s', '%(message)s'])
-    BRIEF_12: str = ' ┇ '.join(['%(asctime)s', '%(name)12s', '%(message)s'])
-    BRIEF_16: str = ' ┇ '.join(['%(asctime)s', '%(name)16s', '%(message)s'])
-    BRIEF_20: str = ' ┇ '.join(['%(asctime)s', '%(name)20s', '%(message)s'])
-    CHECK_00: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(message)s'])
-    CHECK_12: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(name)12s', '%(message)s'])
-    CHECK_16: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(name)16s', '%(message)s'])
-    CHECK_20: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(name)20s', '%(message)s'])
-    CHECK_24: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(name)24s', '%(message)s'])
-    CHECK_28: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(name)28s', '%(message)s'])
-    CHECK_32: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(name)32s', '%(message)s'])
-    CHECK_36: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(name)36s', '%(message)s'])
-    CHECK_40: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(name)40s', '%(message)s'])
-    CHECK_48: str = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(name)48s', '%(message)s'])
-    TRACE_12: str = ' ┇ '.join(['%(asctime)s', '%(filename)12s:%(lineno)-4d', '%(message)s'])
-    TRACE_16: str = ' ┇ '.join(['%(asctime)s', '%(filename)16s:%(lineno)-4d', '%(message)s'])
-    TRACE_20: str = ' ┇ '.join(['%(asctime)s', '%(filename)20s:%(lineno)-4d', '%(message)s'])
-    TRACE_24: str = ' ┇ '.join(['%(asctime)s', '%(filename)24s:%(lineno)-4d', '%(message)s'])
-    TRACE_28: str = ' ┇ '.join(['%(asctime)s', '%(filename)28s:%(lineno)-4d', '%(message)s'])
-    TRACE_32: str = ' ┇ '.join(['%(asctime)s', '%(filename)32s:%(lineno)-4d', '%(message)s'])
-    TRACE_36: str = ' ┇ '.join(['%(asctime)s', '%(filename)36s:%(lineno)-4d', '%(message)s'])
-    TRACE_40: str = ' ┇ '.join(['%(asctime)s', '%(filename)40s:%(lineno)-4d', '%(message)s'])
-    DEBUG_00: str = ' ┇ '.join(['%(pathname)60s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(message)s'])
-    DEBUG_12: str = ' ┇ '.join(['%(pathname)60s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)12s', '%(message)s'])
-    DEBUG_16: str = ' ┇ '.join(['%(pathname)60s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)16s', '%(message)s'])
-    DEBUG_20: str = ' ┇ '.join(['%(pathname)70s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)20s', '%(message)s'])
-    DEBUG_24: str = ' ┇ '.join(['%(pathname)70s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)24s', '%(message)s'])
-    DEBUG_28: str = ' ┇ '.join(['%(pathname)70s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)28s', '%(message)s'])
-    DEBUG_32: str = ' ┇ '.join(['%(pathname)90s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)32s', '%(message)s'])
-    DEBUG_36: str = ' ┇ '.join(['%(pathname)90s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)36s', '%(message)s'])
-    DEBUG_40: str = ' ┇ '.join(['%(pathname)120s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)40s', '%(message)s'])
-    DEBUG_48: str = ' ┇ '.join(['%(pathname)120s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)48s', '%(message)s'])
+
+class LoggingFormat(Enum):
+    PRINT_00 = ' ┇ '.join(['%(message)s'])
+    PRINT_12 = ' ┇ '.join(['%(name)12s', '%(message)s'])
+    PRINT_16 = ' ┇ '.join(['%(name)16s', '%(message)s'])
+    PRINT_20 = ' ┇ '.join(['%(name)20s', '%(message)s'])
+    BRIEF_00 = ' ┇ '.join(['%(asctime)s', '%(message)s'])
+    BRIEF_12 = ' ┇ '.join(['%(asctime)s', '%(name)12s', '%(message)s'])
+    BRIEF_16 = ' ┇ '.join(['%(asctime)s', '%(name)16s', '%(message)s'])
+    BRIEF_20 = ' ┇ '.join(['%(asctime)s', '%(name)20s', '%(message)s'])
+    CHECK_00 = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(message)s'])
+    CHECK_12 = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(name)12s', '%(message)s'])
+    CHECK_16 = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(name)16s', '%(message)s'])
+    CHECK_20 = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(name)20s', '%(message)s'])
+    CHECK_24 = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(name)24s', '%(message)s'])
+    CHECK_28 = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(name)28s', '%(message)s'])
+    CHECK_32 = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(name)32s', '%(message)s'])
+    CHECK_36 = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(name)36s', '%(message)s'])
+    CHECK_40 = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(name)40s', '%(message)s'])
+    CHECK_48 = ' ┇ '.join(['%(asctime)s', '%(levelname)-7s', '%(name)48s', '%(message)s'])
+    TRACE_12 = ' ┇ '.join(['%(asctime)s', '%(filename)12s:%(lineno)-4d', '%(message)s'])
+    TRACE_16 = ' ┇ '.join(['%(asctime)s', '%(filename)16s:%(lineno)-4d', '%(message)s'])
+    TRACE_20 = ' ┇ '.join(['%(asctime)s', '%(filename)20s:%(lineno)-4d', '%(message)s'])
+    TRACE_24 = ' ┇ '.join(['%(asctime)s', '%(filename)24s:%(lineno)-4d', '%(message)s'])
+    TRACE_28 = ' ┇ '.join(['%(asctime)s', '%(filename)28s:%(lineno)-4d', '%(message)s'])
+    TRACE_32 = ' ┇ '.join(['%(asctime)s', '%(filename)32s:%(lineno)-4d', '%(message)s'])
+    TRACE_36 = ' ┇ '.join(['%(asctime)s', '%(filename)36s:%(lineno)-4d', '%(message)s'])
+    TRACE_40 = ' ┇ '.join(['%(asctime)s', '%(filename)40s:%(lineno)-4d', '%(message)s'])
+    DEBUG_00 = ' ┇ '.join(['%(pathname)60s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(message)s'])
+    DEBUG_12 = ' ┇ '.join(['%(pathname)60s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)12s', '%(message)s'])
+    DEBUG_16 = ' ┇ '.join(['%(pathname)60s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)16s', '%(message)s'])
+    DEBUG_20 = ' ┇ '.join(['%(pathname)70s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)20s', '%(message)s'])
+    DEBUG_24 = ' ┇ '.join(['%(pathname)70s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)24s', '%(message)s'])
+    DEBUG_28 = ' ┇ '.join(['%(pathname)70s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)28s', '%(message)s'])
+    DEBUG_32 = ' ┇ '.join(['%(pathname)90s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)32s', '%(message)s'])
+    DEBUG_36 = ' ┇ '.join(['%(pathname)90s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)36s', '%(message)s'])
+    DEBUG_40 = ' ┇ '.join(['%(pathname)120s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)40s', '%(message)s'])
+    DEBUG_48 = ' ┇ '.join(['%(pathname)120s:%(lineno)-5d', '%(asctime)s', '%(levelname)-7s', '%(name)48s', '%(message)s'])
 
 
 class LoggerWriter:
