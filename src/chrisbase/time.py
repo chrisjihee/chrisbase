@@ -44,3 +44,9 @@ def str_delta(x: timedelta):
     mm, ss = divmod(x.total_seconds(), 60)
     hh, mm = divmod(mm, 60)
     return f"{hh:02.0f}:{mm:02.0f}:{ss:06.3f}"
+
+
+def gather_start_time() -> float:
+    import accelerate
+    start_time = now_stamp()
+    return sorted(accelerate.utils.gather_object([start_time]))[0]
