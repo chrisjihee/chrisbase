@@ -4,6 +4,7 @@ import logging
 import math
 import sys
 import warnings
+from contextlib import contextmanager
 from dataclasses import dataclass
 from dataclasses import field
 from datetime import datetime
@@ -25,6 +26,7 @@ from chrisbase.util import tupled, SP, NO, to_dataframe
 from dataclasses_json import DataClassJsonMixin
 from elasticsearch import Elasticsearch
 from more_itertools import ichunked
+from omegaconf import OmegaConf
 from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator
 from pymongo import MongoClient
 from transformers import set_seed
@@ -47,6 +49,16 @@ class AppTyper(typer.Typer):
         for function in functions:
             app.command(**kwargs)(function)
         app()
+
+
+@contextmanager
+def temporary_mutable_conf(cfg):
+    original_state = OmegaConf.is_readonly(cfg)
+    OmegaConf.set_readonly(cfg, False)
+    try:
+        yield
+    finally:
+        OmegaConf.set_readonly(cfg, original_state)
 
 
 class HydraProjectEnv(BaseModel):
