@@ -23,6 +23,7 @@ import netifaces
 import pandas as pd
 from chrisbase.time import from_timestamp
 from chrisbase.util import tupled, OX
+from omegaconf import DictConfig, OmegaConf, Container
 from tabulate import tabulate
 from tensorboard.backend.event_processing import event_accumulator
 
@@ -574,6 +575,12 @@ def save_json(obj: dict | list, path: str | Path, **kwargs):
     file = make_parent_dir(Path(path))
     with file.open("w") as f:
         json.dump(obj, f, **kwargs)
+
+
+def save_yaml(conf: DictConfig | Container, path: str | Path, resolve: bool = False, sort_keys: bool = False):
+    output_file = Path(path)
+    output_file.write_text(OmegaConf.to_yaml(conf, resolve=resolve, sort_keys=sort_keys))
+    return output_file
 
 
 def merge_dicts(*xs) -> dict:
