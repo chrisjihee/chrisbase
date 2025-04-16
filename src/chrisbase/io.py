@@ -23,6 +23,7 @@ import netifaces
 import pandas as pd
 from chrisbase.time import from_timestamp
 from chrisbase.util import tupled, OX
+from hydra.conf import HydraConf
 from omegaconf import DictConfig, OmegaConf, Container
 from tabulate import tabulate
 from tensorboard.backend.event_processing import event_accumulator
@@ -382,6 +383,22 @@ def glob_files(path, glob: str) -> List[Path]:
     return sorted([x for x in path.glob(glob) if x.is_file()])
 
 
+def count_dirs(path, key, sub=None):
+    path = Path(path)
+    if not sub:
+        return sum(1 for x in path.glob(f"*{key}*") if x.is_dir())
+    else:
+        return sum(1 for x in path.glob(f"*{key}*/*{sub}*") if x.is_dir())
+
+
+def count_files(path, key, sub=None):
+    path = Path(path)
+    if not sub:
+        return sum(1 for x in path.glob(f"*{key}*") if x.is_file())
+    else:
+        return sum(1 for x in path.glob(f"*{key}*/*{sub}*") if x.is_file())
+
+
 def paths_info(*xs, to_pathlist=paths, to_filename=str, sort_key=None):
     from chrisbase.util import to_dataframe
     records = []
@@ -577,7 +594,7 @@ def save_json(obj: dict | list, path: str | Path, **kwargs):
         json.dump(obj, f, **kwargs)
 
 
-def save_yaml(conf: DictConfig | Container, path: str | Path, resolve: bool = False, sort_keys: bool = False):
+def save_yaml(conf: DictConfig | Container | HydraConf, path: str | Path, resolve: bool = False, sort_keys: bool = False):
     output_file = Path(path)
     output_file.write_text(OmegaConf.to_yaml(conf, resolve=resolve, sort_keys=sort_keys))
     return output_file
