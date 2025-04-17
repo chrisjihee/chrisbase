@@ -26,7 +26,7 @@ from chrisbase.util import tupled, SP, NO, to_dataframe
 from dataclasses_json import DataClassJsonMixin
 from elasticsearch import Elasticsearch
 from more_itertools import ichunked
-from omegaconf import OmegaConf
+from omegaconf import DictConfig, OmegaConf
 from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator
 from pymongo import MongoClient
 from transformers import set_seed
@@ -838,7 +838,7 @@ class RuntimeChecking:
 
 
 class JobTimer:
-    def __init__(self, name=None, args: CommonArguments | NewCommonArguments = None, prefix=None, postfix=None,
+    def __init__(self, name=None, args: CommonArguments | NewCommonArguments | DictConfig = None, prefix=None, postfix=None,
                  verbose=1, mt=0, mb=0, pt=0, pb=0, rt=0, rb=0, rc='-', rw=137,
                  flush_sec=0.1, mute_loggers=None, mute_warning=None):
         self.name = name
@@ -891,11 +891,19 @@ class JobTimer:
                         logger.info('')
                 flush_or(sys.stdout, sys.stderr, sec=self.flush_sec if self.flush_sec else None)
             if self.args:
-                self.args.time.set_started()
+                if hasattr(self.args, "time"):
+                    self.args.time.set_started()
                 if self.verbose >= 1:
-                    self.args.info_args(c='-', w=self.rw)
+                    if hasattr(self.args, "info_args"):
+                        self.args.info_args(c="-", w=self.rw)
+                    else:
+                        yaml_str = OmegaConf.to_yaml(self.args, resolve=True)
+                        logger.info("[args]")
+                        sum(logger.info(f"  {l}") or 1 for l in yaml_str.rstrip().splitlines())
+                        logger.info(hr(c=self.rc, w=self.rw))
                 if self.verbose >= 2:
-                    self.args.save_args()
+                    if hasattr(self.args, "save_args"):
+                        self.args.save_args()
             self.t1 = datetime.now()
             return self
         except Exception as e:
@@ -906,7 +914,8 @@ class JobTimer:
     def __exit__(self, *exc_info):
         try:
             if self.args:
-                self.args.time.set_settled()
+                if hasattr(self.args, "time"):
+                    self.args.time.set_settled()
                 if self.verbose >= 2:
                     self.args.save_args()
             self.t2 = datetime.now()
