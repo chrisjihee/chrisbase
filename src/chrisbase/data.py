@@ -52,13 +52,23 @@ class AppTyper(typer.Typer):
 
 
 @contextmanager
-def temporary_mutable_conf(cfg):
-    original_state = OmegaConf.is_readonly(cfg)
-    OmegaConf.set_readonly(cfg, False)
+def temporary_mutable_conf(*cfgs):
+    """
+    여러 OmegaConf 객체를 with 블록 동안만 수정 가능하게 만들고,
+    블록이 끝나면 원래 readonly 상태를 복원한다.
+    """
+    original_states = [OmegaConf.is_readonly(c) for c in cfgs]
+
+    # 모두 mutable 로 설정
+    for c in cfgs:
+        OmegaConf.set_readonly(c, False)
+
     try:
-        yield
+        yield  # ‼️ 단 한 번만 yield
     finally:
-        OmegaConf.set_readonly(cfg, original_state)
+        # 원래 상태로 복원
+        for c, state in zip(cfgs, original_states):
+            OmegaConf.set_readonly(c, state)
 
 
 class HydraProjectEnv(BaseModel):
