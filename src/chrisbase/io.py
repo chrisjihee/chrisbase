@@ -23,8 +23,7 @@ import netifaces
 import pandas as pd
 from chrisbase.time import from_timestamp
 from chrisbase.util import tupled, OX
-from hydra.conf import HydraConf
-from omegaconf import DictConfig, OmegaConf, Container
+from omegaconf import OmegaConf
 from tabulate import tabulate
 from tensorboard.backend.event_processing import event_accumulator
 
@@ -594,9 +593,23 @@ def save_json(obj: dict | list, path: str | Path, **kwargs):
         json.dump(obj, f, **kwargs)
 
 
-def save_yaml(conf: DictConfig | Container | HydraConf, path: str | Path, resolve: bool = False, sort_keys: bool = False):
+def _path_to_str(obj):
+    if isinstance(obj, Path):
+        return str(obj)
+    if isinstance(obj, dict):
+        return {k: _path_to_str(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_path_to_str(v) for v in obj]
+    return obj
+
+
+def save_yaml(conf, path, *, resolve=False, sort_keys=False):
+    if not OmegaConf.is_config(conf):
+        conf = OmegaConf.create(conf)
+    primitive = _path_to_str(OmegaConf.to_container(conf, resolve=resolve))
+    yaml_str = OmegaConf.to_yaml(OmegaConf.create(primitive), sort_keys=sort_keys)
     output_file = Path(path)
-    output_file.write_text(OmegaConf.to_yaml(conf, resolve=resolve, sort_keys=sort_keys))
+    output_file.write_text(yaml_str)
     return output_file
 
 
