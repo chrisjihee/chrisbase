@@ -5,6 +5,8 @@ import logging
 import os
 import random
 import re
+import sys
+import time
 from concurrent.futures import Future
 from concurrent.futures import ProcessPoolExecutor
 from contextlib import contextmanager
@@ -299,6 +301,30 @@ def wait_future_jobs(jobs: Iterable[Tuple[int, Future]], pool: ProcessPoolExecut
     if isinstance(jobs, tqdm.std.tqdm):
         logger.info(jobs)
     terminate_processes(pool)
+
+
+@contextmanager
+def flush_and_sleep(delay: float = 0.1):
+    """
+    Context manager to flush an output stream and sleep for a short duration.
+
+    Args:
+        delay (float): Time in seconds to sleep after flushing.
+
+    Usage:
+        with flush_and_sleep(0.2):
+            # run dataset conversion or other logging-progress steps
+            convert_dataset()
+"""
+    try:
+        yield
+    finally:
+        try:
+            sys.stderr.flush()
+            sys.stdout.flush()
+        except Exception:
+            pass
+        time.sleep(delay)
 
 
 @contextmanager
