@@ -7,6 +7,7 @@ import random
 import re
 from concurrent.futures import Future
 from concurrent.futures import ProcessPoolExecutor
+from contextlib import contextmanager
 from dataclasses import asdict
 from itertools import groupby
 from operator import itemgetter, attrgetter
@@ -17,6 +18,7 @@ import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
 import tqdm
+from accelerate import Accelerator
 from pydantic import BaseModel
 from sqlalchemy.util import OrderedSet
 
@@ -297,3 +299,19 @@ def wait_future_jobs(jobs: Iterable[Tuple[int, Future]], pool: ProcessPoolExecut
     if isinstance(jobs, tqdm.std.tqdm):
         logger.info(jobs)
     terminate_processes(pool)
+
+
+@contextmanager
+def run_on_local_main_process(acc: Accelerator):
+    """
+    블록 내부를 로컬 main 프로세스에서만 실행하고,
+    모든 프로세스가 block 앞뒤로 barrier 에 걸리도록 한다.
+    """
+    acc.wait_for_everyone()  # ── 블록 진입 전 동기화
+    try:
+        if acc.is_local_main_process:
+            yield  # main 프로세스만 실행
+        else:
+            yield None  # 다른 프로세스는 그냥 통과
+    finally:
+        acc.wait_for_everyone()  # ── 블록 종료 후 동기화
