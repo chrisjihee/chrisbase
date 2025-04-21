@@ -395,7 +395,7 @@ def count_files(path, key, sub=None):
     if not sub:
         return sum(1 for x in path.glob(f"*{key}*") if x.is_file())
     else:
-        return sum(1 for x in path.glob(f"*{key}*/*{sub}*") if x.is_file())
+        return sum(1 for x in path.glob(f"*{key}*/**/*{sub}*") if x.is_file())
 
 
 def paths_info(*xs, to_pathlist=paths, to_filename=str, sort_key=None):
