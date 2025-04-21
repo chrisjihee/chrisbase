@@ -20,7 +20,7 @@ import pymongo.collection
 import pymongo.database
 import pymongo.errors
 import typer
-from chrisbase.io import get_hostname, get_hostaddr, current_file, first_or, cwd, hr, flush_or, make_parent_dir, setup_unit_logger, setup_dual_logger, open_file, file_lines, new_path, get_http_clients, log_table, LoggingFormat
+from chrisbase.io import get_hostname, get_hostaddr, current_file, first_or, cwd, hr, flush_or, make_parent_dir, setup_unit_logger, setup_dual_logger, open_file, file_lines, new_path, get_http_clients, log_table, LoggingFormat, to_yaml
 from chrisbase.time import now, str_delta
 from chrisbase.util import tupled, SP, NO, to_dataframe
 from dataclasses_json import DataClassJsonMixin
@@ -907,9 +907,9 @@ class JobTimer:
                     if hasattr(self.args, "info_args"):
                         self.args.info_args(c="-", w=self.rw)
                     else:
-                        yaml_str = OmegaConf.to_yaml(self.args, resolve=True)
+                        yaml_str = to_yaml(self.args, resolve=True).rstrip()
                         logger.info("[args]")
-                        sum(logger.info(f"  {l}") or 1 for l in yaml_str.rstrip().splitlines())
+                        sum(logger.info(f"  {l}") or 1 for l in yaml_str.splitlines())
                         logger.info(hr(c=self.rc, w=self.rw))
                 if self.verbose >= 2:
                     if hasattr(self.args, "save_args"):

@@ -603,11 +603,16 @@ def _path_to_str(obj):
     return obj
 
 
-def save_yaml(conf, path, *, resolve=False, sort_keys=False):
+def to_yaml(conf, *, resolve=False, sort_keys=False):
     if not OmegaConf.is_config(conf):
         conf = OmegaConf.create(conf)
     primitive = _path_to_str(OmegaConf.to_container(conf, resolve=resolve))
     yaml_str = OmegaConf.to_yaml(OmegaConf.create(primitive), sort_keys=sort_keys)
+    return yaml_str
+
+
+def save_yaml(conf, path, *, resolve=False, sort_keys=False):
+    yaml_str = to_yaml(conf, resolve=resolve, sort_keys=sort_keys)
     output_file = Path(path)
     output_file.write_text(yaml_str)
     return output_file
