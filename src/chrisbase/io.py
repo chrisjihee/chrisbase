@@ -21,9 +21,11 @@ from typing import Iterable, List
 import httpx
 import netifaces
 import pandas as pd
+import yaml
 from chrisbase.time import from_timestamp
 from chrisbase.util import tupled, OX
 from omegaconf import OmegaConf
+from omegaconf._utils import get_omega_conf_dumper
 from tabulate import tabulate
 from tensorboard.backend.event_processing import event_accumulator
 
@@ -603,16 +605,16 @@ def _path_to_str(obj):
     return obj
 
 
-def to_yaml(conf, *, resolve=False, sort_keys=False):
+def to_yaml(conf, *, resolve=False, sort_keys=False, **kwds):
     if not OmegaConf.is_config(conf):
         conf = OmegaConf.create(conf)
-    primitive = _path_to_str(OmegaConf.to_container(conf, resolve=resolve))
-    yaml_str = OmegaConf.to_yaml(OmegaConf.create(primitive), sort_keys=sort_keys)
-    return yaml_str
+    container = _path_to_str(OmegaConf.to_container(conf, resolve=resolve, enum_to_str=True))
+    return yaml.dump(container, Dumper=get_omega_conf_dumper(),
+                     default_flow_style=False, allow_unicode=True, sort_keys=sort_keys, **kwds)
 
 
 def save_yaml(conf, path, *, resolve=False, sort_keys=False):
-    yaml_str = to_yaml(conf, resolve=resolve, sort_keys=sort_keys)
+    yaml_str = to_yaml(conf, resolve=resolve, sort_keys=sort_keys, width=4096)
     output_file = Path(path)
     output_file.write_text(yaml_str)
     return output_file

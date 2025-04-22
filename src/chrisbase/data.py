@@ -907,7 +907,7 @@ class JobTimer:
                     if hasattr(self.args, "info_args"):
                         self.args.info_args(c="-", w=self.rw)
                     else:
-                        yaml_str = to_yaml(self.args, resolve=True).rstrip()
+                        yaml_str = to_yaml(self.args, resolve=True, width=4096).rstrip()
                         logger.info("[args]")
                         sum(logger.info(f"  {l}") or 1 for l in yaml_str.splitlines())
                         logger.info(hr(c=self.rc, w=self.rw))
