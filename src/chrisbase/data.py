@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional, ClassVar
 from typing import Iterable, List, Tuple, Mapping
 
+import datasets
 import pandas as pd
 import pymongo.collection
 import pymongo.database
@@ -69,6 +70,22 @@ def temporary_mutable_conf(*cfgs):
         # 원래 상태로 복원
         for c, state in zip(cfgs, original_states):
             OmegaConf.set_readonly(c, state)
+
+
+@contextmanager
+def disable_datasets_progress():
+    """
+    Context manager to temporarily disable the datasets progress bar.
+    On entering, it calls datasets.disable_progress_bar(),
+    and on exiting, it restores the progress bar with datasets.enable_progress_bar().
+    """
+    # Turn off the progress bar
+    datasets.disable_progress_bar()
+    try:
+        yield
+    finally:
+        # Always re-enable the progress bar, even if an error occurs
+        datasets.enable_progress_bar()
 
 
 class HydraProjectEnv(BaseModel):
