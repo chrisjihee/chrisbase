@@ -20,7 +20,6 @@ import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
 import tqdm
-from accelerate import Accelerator
 from pydantic import BaseModel
 from sqlalchemy.util import OrderedSet
 
@@ -328,16 +327,17 @@ def flush_and_sleep(delay: float = 0.1):
 
 
 @contextmanager
-def run_on_local_main_process(acc: Accelerator):
+def run_on_local_main_process(local_rank: int = int(os.getenv("LOCAL_RANK", -1))):
     """
     블록 내부를 로컬 main 프로세스에서만 실행하고,
     모든 프로세스가 block 앞뒤로 barrier 에 걸리도록 한다.
     """
-    acc.wait_for_everyone()  # ── 블록 진입 전 동기화
+    from accelerate.utils import wait_for_everyone
+    wait_for_everyone()  # ── 블록 진입 전 동기화
     try:
-        if acc.is_local_main_process:
+        if local_rank == 0:
             yield  # main 프로세스만 실행
         else:
             yield None  # 다른 프로세스는 그냥 통과
     finally:
-        acc.wait_for_everyone()  # ── 블록 종료 후 동기화
+        wait_for_everyone()  # ── 블록 종료 후 동기화
