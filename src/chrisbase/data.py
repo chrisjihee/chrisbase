@@ -841,19 +841,6 @@ class Counter:
         return next(self._incs) - next(self._base)
 
 
-class RuntimeChecking:
-    def __init__(self, args: CommonArguments):
-        self.args: CommonArguments = args
-
-    def __enter__(self):
-        self.args.time.set_started()
-        self.args.save_args()
-
-    def __exit__(self, *exc_info):
-        self.args.time.set_settled()
-        self.args.save_args()
-
-
 class JobTimer:
     def __init__(self, name=None, args: CommonArguments | NewCommonArguments | DictConfig = None, prefix=None, postfix=None,
                  verbose=1, mt=0, mb=0, pt=0, pb=0, rt=0, rb=0, rc='-', rw=137,
