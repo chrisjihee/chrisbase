@@ -15,23 +15,23 @@ from pathlib import Path
 from typing import Any, Callable, Optional, ClassVar
 from typing import Iterable, List, Tuple, Mapping
 
-import datasets
 import pandas as pd
 import pymongo.collection
 import pymongo.database
 import pymongo.errors
 import typer
-from chrisbase.io import get_hostname, get_hostaddr, current_file, first_or, cwd, hr, flush_or, make_parent_dir, setup_unit_logger, setup_dual_logger, open_file, file_lines, new_path, get_http_clients, log_table, LoggingFormat, to_yaml
-from chrisbase.time import now, str_delta
-from chrisbase.util import tupled, SP, NO, to_dataframe
 from dataclasses_json import DataClassJsonMixin
 from elasticsearch import Elasticsearch
 from more_itertools import ichunked
 from omegaconf import DictConfig, OmegaConf
 from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator
 from pymongo import MongoClient
-from transformers import set_seed
 from typing_extensions import Self
+
+from chrisbase.io import get_hostname, get_hostaddr, current_file, first_or, cwd, hr, flush_or, make_parent_dir, setup_unit_logger, setup_dual_logger, open_file, file_lines, new_path, get_http_clients, log_table, LoggingFormat, to_yaml
+from chrisbase.time import now, str_delta
+from chrisbase.util import tupled, SP, NO, to_dataframe
+from transformers import set_seed
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +79,8 @@ def disable_datasets_progress():
     On entering, it calls datasets.disable_progress_bar(),
     and on exiting, it restores the progress bar with datasets.enable_progress_bar().
     """
+    import datasets
+
     # Turn off the progress bar
     datasets.disable_progress_bar()
     try:

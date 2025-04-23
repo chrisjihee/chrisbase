@@ -1,5 +1,6 @@
-import accelerate.utils
+import os
 import time
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 
 
@@ -48,11 +49,13 @@ def str_delta(x: timedelta):
 
 
 def gather_start_time() -> float:
+    import accelerate.utils
     start_time = now_stamp()
     return sorted(accelerate.utils.gather_object([start_time]))[0]
 
 
 def wait_for_everyone():
+    import accelerate.utils
     return accelerate.utils.wait_for_everyone()
 
 
