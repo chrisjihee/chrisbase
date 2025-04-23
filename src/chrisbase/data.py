@@ -88,16 +88,6 @@ def disable_datasets_progress():
         datasets.enable_progress_bar()
 
 
-class HydraProjectEnv(BaseModel):
-    hostname: str = get_hostname()
-    hostaddr: str = get_hostaddr()
-    time_stamp: str = Field(default=now('%m%d-%H%M%S'))
-    python_path: Path = Path(sys.executable).absolute()
-    current_dir: Path = Path().absolute()
-    current_file: Path = Path(sys.argv[0])
-    command_args: list[str] = sys.argv[1:]
-
-
 class NewProjectEnv(BaseModel):
     hostname: str = get_hostname()
     hostaddr: str = get_hostaddr()
