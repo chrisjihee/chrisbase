@@ -54,3 +54,28 @@ def gather_start_time() -> float:
 
 def wait_for_everyone():
     return accelerate.utils.wait_for_everyone()
+
+
+@contextmanager
+def run_on_local_main_process(local_rank: int = int(os.getenv("LOCAL_RANK", -1))):
+    wait_for_everyone()
+    try:
+        if local_rank == 0:
+            yield
+        else:
+            yield None
+    finally:
+        wait_for_everyone()
+
+
+@contextmanager
+def flush_and_sleep(delay: float = 0.1):
+    try:
+        yield
+    finally:
+        try:
+            sys.stderr.flush()
+            sys.stdout.flush()
+        except Exception:
+            pass
+        time.sleep(delay)
