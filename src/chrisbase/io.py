@@ -384,20 +384,20 @@ def glob_files(path, glob: str) -> List[Path]:
     return sorted([x for x in path.glob(glob) if x.is_file()])
 
 
-def count_dirs(path, key, sub=None):
+def count_dirs(path, sub, target=None):
     path = Path(path)
-    if not sub:
-        return sum(1 for x in path.glob(f"*{key}*") if x.is_dir())
+    if not target:
+        return sum(1 for x in path.glob(f"*{sub}*") if x.is_dir())
     else:
-        return sum(1 for x in path.glob(f"*{key}*/*{sub}*") if x.is_dir())
+        return sum(1 for x in path.glob(f"*{sub}*/*{target}*") if x.is_dir())
 
 
-def count_files(path, key, sub=None):
+def count_files(path, sub, target=None):
     path = Path(path)
-    if not sub:
-        return sum(1 for x in path.glob(f"*{key}*") if x.is_file())
+    if not target:
+        return sum(1 for x in path.glob(f"*{sub}*") if x.is_file())
     else:
-        return sum(1 for x in path.glob(f"*{key}*/**/*{sub}*") if x.is_file())
+        return sum(1 for x in path.glob(f"*{sub}*/**/*{target}*") if x.is_file())
 
 
 def paths_info(*xs, to_pathlist=paths, to_filename=str, sort_key=None):
