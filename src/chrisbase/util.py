@@ -213,7 +213,7 @@ def display_histogram(seqs, figsize=(10, 5), dpi=80, bins=20, rwidth=0.8, yaxis_
         plt.show()
 
 
-class EmptyTqdm:
+class EmptyTqdm:  # TODO: Remove someday
     """Dummy tqdm which doesn't do anything."""
 
     def __init__(self, *args, **kwargs):
@@ -235,7 +235,7 @@ class EmptyTqdm:
         return
 
 
-class empty_tqdm_cls:
+class empty_tqdm_cls:  # TODO: Remove someday
     def __init__(self, *args, **kwargs):
         pass
 
@@ -249,7 +249,7 @@ class empty_tqdm_cls:
         pass
 
 
-class mute_tqdm_cls:
+class mute_tqdm_cls:  # TODO: Remove someday
     def to_desc(self, desc, pre=None):
         return NO.join([
             f'{pre} ' if pre else '',
@@ -279,7 +279,7 @@ class mute_tqdm_cls:
         return tqdm.std.tqdm.get_lock()
 
 
-def terminate_processes(pool: ProcessPoolExecutor):
+def terminate_processes(pool: ProcessPoolExecutor):  # TODO: Remove someday
     for proc in pool._processes.values():
         if proc.is_alive():
             proc.terminate()
