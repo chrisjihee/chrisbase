@@ -395,15 +395,15 @@ def count_dirs(path, sub, target=None):
 def count_files(path, sub, target=None):
     path = Path(path)
     if not target:
-        return sum(
+        return sum([
             sum(1 for x in path.glob(f"*{sub}") if x.is_file()),
             sum(1 for x in path.glob(f"*{sub}-*") if x.is_file()),
-        )
+        ])
     else:
-        return sum(
+        return sum([
             sum(1 for x in path.glob(f"*{sub}/**/*{target}*") if x.is_file()),
             sum(1 for x in path.glob(f"*{sub}-*/**/*{target}*") if x.is_file()),
-        )
+        ])
 
 
 def paths_info(*xs, to_pathlist=paths, to_filename=str, sort_key=None):
