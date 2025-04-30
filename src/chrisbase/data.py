@@ -108,7 +108,7 @@ class NewProjectEnv(BaseModel):
     output_file: str | Path = Field(default=None)
     logging_file: str | Path = Field(default=None)
     logging_level: int = Field(default=logging.INFO)
-    logging_format: LoggingFormat = Field(default=LoggingFormat.BRIEF_00)
+    logging_format: LoggingFormat = Field(default=LoggingFormat.CHECK_20)
     datetime_format: str = Field(default="[%m.%d %H:%M:%S]")
     argument_file: str | Path = Field(default=None)
     random_seed: int = Field(default=None)
