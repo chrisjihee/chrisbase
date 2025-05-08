@@ -27,7 +27,6 @@ from chrisbase.util import tupled, OX
 from omegaconf import OmegaConf
 from omegaconf._utils import get_omega_conf_dumper
 from tabulate import tabulate
-from tensorboard.backend.event_processing import event_accumulator
 
 logger = logging.getLogger(__name__)
 sys_stdout = sys.stdout
@@ -917,6 +916,7 @@ def tb_events_to_csv(
     - event_file에 여러 Scalar 태그가 존재할 경우, 모든 태그를 모아
       [wall_time, step, tag, value] 형태로 CSV 파일에 기록합니다.
     """
+    from tensorboard.backend.event_processing import event_accumulator
     ea = event_accumulator.EventAccumulator(
         str(event_file),
         purge_orphaned_data=purge_orphaned_data  # or False
