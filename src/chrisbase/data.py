@@ -103,7 +103,7 @@ class NewProjectEnv(BaseModel):
     command_args: list[str] = sys.argv[1:]
     output_home: str | Path = Field(default="output")
     output_name: str | Path | None = Field(default=None)
-    run_version: str | int | Path | None = Field(default=None)
+    run_version: str | Path | None = Field(default=None)
     output_file: str | Path = Field(default=None)
     logging_file: str | Path = Field(default=None)
     logging_level: int = Field(default=logging.INFO)
@@ -739,9 +739,9 @@ class ProjectEnv(TypedData):
 
     def _setup_logger(self):
         if self.logging_home and self.logging_file:
-            setup_dual_logger(level=self.message_level, fmt=self.message_format, datefmt=self.date_format, stream=sys.stdout, filename=self.logging_home / self.logging_file)
+            setup_dual_logger(level=self.message_level, fmt=self.message_format.value, datefmt=self.date_format, stream=sys.stdout, filename=self.logging_home / self.logging_file)
         else:
-            setup_unit_logger(level=self.message_level, fmt=self.message_format, datefmt=self.date_format, stream=sys.stdout)
+            setup_unit_logger(level=self.message_level, fmt=self.message_format.value, datefmt=self.date_format, stream=sys.stdout)
         return self
 
     def set_job_name(self, name: str = None):
