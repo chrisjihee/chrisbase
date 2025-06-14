@@ -297,3 +297,21 @@ def wait_future_jobs(jobs: Iterable[Tuple[int, Future]], pool: ProcessPoolExecut
     if isinstance(jobs, tqdm.std.tqdm):
         logger.info(jobs)
     terminate_processes(pool)
+
+
+def set_tqdm_bar_size(bar_size=150):
+    import os
+    os.environ['COLUMNS'] = f'{bar_size}'
+    os.environ['TQDM_NCOLS'] = f'{bar_size}'
+
+    import tqdm
+    tqdm.tqdm.ncols = bar_size
+    tqdm.tqdm.mininterval = 1.0
+
+    original_tqdm_init = tqdm.tqdm.__init__
+
+    def patched_tqdm_init(self, *args, **kwargs):
+        kwargs['ncols'] = bar_size
+        return original_tqdm_init(self, *args, **kwargs)
+
+    tqdm.tqdm.__init__ = patched_tqdm_init
