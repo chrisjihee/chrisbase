@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import bz2
 import csv
 import gzip
@@ -22,11 +24,12 @@ import httpx
 import netifaces
 import pandas as pd
 import yaml
-from chrisbase.time import from_timestamp
-from chrisbase.util import tupled, OX
 from omegaconf import OmegaConf
 from omegaconf._utils import get_omega_conf_dumper
 from tabulate import tabulate
+
+from chrisbase.time import from_timestamp
+from chrisbase.util import tupled, OX
 
 logger = logging.getLogger(__name__)
 sys_stdout = sys.stdout
@@ -184,7 +187,7 @@ def is_notebook() -> bool:
         return False
 
 
-def current_file(known_path: Path or str = None) -> Path:
+def current_file(known_path: Path | str = None) -> Path:
     if known_path and exists_or(Path(known_path)):
         return Path(known_path)
     elif is_notebook():
@@ -658,7 +661,7 @@ def pop_keys(dic, keys) -> dict:
     return dic
 
 
-def copy_dict(src: dict, dst: dict or None = None, keys=None) -> dict:
+def copy_dict(src: dict, dst: dict | None = None, keys=None) -> dict:
     if dst is None:
         dst = dict()
     else:
