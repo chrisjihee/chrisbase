@@ -1,4 +1,5 @@
 import os
+import signal
 import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
@@ -94,3 +95,20 @@ def flush_and_sleep(delay: float = 0.1):
         except Exception:
             pass
         time.sleep(delay)
+
+
+@contextmanager
+def timeout_handler(seconds):
+    def timeout_function(signum, frame):
+        raise TimeoutError(f"API call timed out after {seconds} seconds")
+
+    # Set the signal handler
+    old_handler = signal.signal(signal.SIGALRM, timeout_function)
+    signal.alarm(seconds)
+
+    try:
+        yield
+    finally:
+        # Reset the alarm and handler
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, old_handler)
