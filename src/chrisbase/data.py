@@ -986,51 +986,35 @@ def find_sublist_range(haystack: List[Any], sublist: List[Any], case_sensitive: 
     return list()
 
 
-def init_progress(total: int,
-                  desc: str,
-                  stream,
-                  monitor_sleep: float = 0.01
-                  ) -> Tuple[ProgIter, Callable[[int, int], None], Callable[[], None]]:
-    """
-    total          : 전체 작업 개수
-    desc           : ProgIter 설명
-    stream         : 출력 스트림
-    monitor_sleep  : 모니터 스레드 sleep 간격
-
-    반환값
-    1) pbar        : ProgIter 인스턴스 (main 프로세스용)
-    2) tick_fn     : 워커 프로세스에서 호출할 함수 (step, index 기록)
-    3) finalize_fn : main 에서 호출해 모니터 스레드 join + pbar.end()
-    """
+def monitor_progress(pbar: ProgIter, monitor_sleep: float = 0.01) -> Tuple[ProgIter, Callable[[int, int], None], Callable[[], None]]:
     manager = mp.Manager()
     counter = manager.Value('i', 0)
     last_idx = manager.Value('i', -1)
 
-    with ProgIter(desc=desc, total=total, stream=stream, verbose=3) as pbar:
-
-        # -------- 모니터 스레드 --------
-        def _monitor():
-            old = 0
-            while old < total:
-                new = counter.value
-                if new > old:
+    # -------- 모니터 스레드 --------
+    def _monitor():
+        old = 0
+        while old < pbar.total:
+            new = counter.value
+            if new > old:
+                if last_idx.value >= 0:
                     pbar.set_extra(f"index={last_idx.value}")
-                    pbar.step(new - old)
-                    old = new
-                time.sleep(monitor_sleep)
-            pbar.end()
+                pbar.step(new - old, force=True)
+                old = new
+            time.sleep(monitor_sleep)
+        pbar.end()
 
-        mon_thr = Thread(target=_monitor, daemon=True)
-        mon_thr.start()
+    monitor = Thread(target=_monitor, daemon=True)
+    monitor.start()
 
-        # -------- 워커에서 사용할 함수 --------
-        def _tick(step: int = 1, idx: int = -1):
-            counter.value += step
-            if idx >= 0:
-                last_idx.value = idx
+    # -------- 워커에서 사용할 함수 --------
+    def _tick(step: int = 1, idx: int = -1):
+        counter.value += step
+        if idx >= 0:
+            last_idx.value = idx
 
-        # -------- main 에서 호출하는 정리 함수 --------
-        def _finalize():
-            mon_thr.join()
+    # -------- main 에서 호출하는 정리 함수 --------
+    def _finalize():
+        monitor.join()
 
-        return pbar, _tick, _finalize
+    return _tick, _finalize
