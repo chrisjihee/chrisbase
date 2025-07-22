@@ -986,7 +986,7 @@ def find_sublist_range(haystack: List[Any], sublist: List[Any], case_sensitive: 
     return list()
 
 
-def monitor_progress(pbar: ProgIter, monitor_sleep: float = 0.01) -> Tuple[ProgIter, Callable[[int, int], None], Callable[[], None]]:
+def monitor_progress(pbar: ProgIter, monitor_sleep: float = 0.01) -> Tuple[Callable[[int, int], None], Callable[[], None]]:
     manager = mp.Manager()
     counter = manager.Value('i', 0)
     last_idx = manager.Value('i', -1)
@@ -1002,7 +1002,6 @@ def monitor_progress(pbar: ProgIter, monitor_sleep: float = 0.01) -> Tuple[ProgI
                 pbar.step(new - old, force=True)
                 old = new
             time.sleep(monitor_sleep)
-        pbar.end()
 
     monitor = Thread(target=_monitor, daemon=True)
     monitor.start()
