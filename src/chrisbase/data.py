@@ -4,7 +4,7 @@ import itertools
 import json
 import logging
 import math
-import multiprocessing as mp
+import multiprocessing
 import sys
 import time
 import warnings
@@ -986,34 +986,39 @@ def find_sublist_range(haystack: List[Any], sublist: List[Any], case_sensitive: 
     return list()
 
 
-def monitor_progress(pbar: ProgIter, monitor_sleep: float = 0.01) -> Tuple[Callable[[int, int], None], Callable[[], None]]:
-    manager = mp.Manager()
-    counter = manager.Value('i', 0)
-    last_idx = manager.Value('i', -1)
+class ProgressMonitor:
+    def __init__(self, pbar: ProgIter, force: bool = True, loop_sleep: float = 0.001):
+        self.pbar = pbar
+        self.force = force
+        self.loop_sleep = loop_sleep
+        self.manager = multiprocessing.Manager()
+        self.counter = self.manager.Value('i', 0)
+        self.index = self.manager.Value('i', -1)
 
-    # -------- 모니터 스레드 --------
-    def _monitor():
+    def _monitor(self):
         old = 0
-        while old < pbar.total:
-            new = counter.value
+        while old < self.pbar.total:
+            new = self.counter.value
             if new > old:
-                if last_idx.value >= 0:
-                    pbar.set_extra(f"index={last_idx.value}")
-                pbar.step(new - old, force=True)
+                if self.index.value >= 0:
+                    self.pbar.set_extra(f"index={self.index.value}")
+                self.pbar.step(new - old, force=self.force)
                 old = new
-            time.sleep(monitor_sleep)
+            time.sleep(self.loop_sleep)
 
-    monitor = Thread(target=_monitor, daemon=True)
-    monitor.start()
+    def __enter__(self):
+        self._thread = Thread(target=self._monitor, daemon=True)
+        self._thread.start()
+        monitor_counter = self.counter
+        monitor_index = self.index
 
-    # -------- 워커에서 사용할 함수 --------
-    def _tick(step: int = 1, idx: int = -1):
-        counter.value += step
-        if idx >= 0:
-            last_idx.value = idx
+        def _tick(step: int = 1, index: int = -1):
+            monitor_counter.value += step
+            if index >= 0:
+                monitor_index.value = index
 
-    # -------- main 에서 호출하는 정리 함수 --------
-    def _finalize():
-        monitor.join()
+        return _tick
 
-    return _tick, _finalize
+    def __exit__(self, exc_type, exc, tb):
+        self._thread.join()
+        self.manager.shutdown()
