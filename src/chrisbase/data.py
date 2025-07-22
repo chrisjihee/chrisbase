@@ -987,17 +987,18 @@ def find_sublist_range(haystack: List[Any], sublist: List[Any], case_sensitive: 
 
 
 class ProgressMonitor:
-    def __init__(self, pbar: ProgIter, force: bool = True, loop_sleep: float = 0.001):
+    def __init__(self, pbar: ProgIter, force: bool = True, loop_sleep: float = 0.001, stop_timeout: float = 0.5):
         self.pbar = pbar
         self.force = force
         self.loop_sleep = loop_sleep
+        self.stop_timeout = stop_timeout
         self.manager = multiprocessing.Manager()
         self.counter = self.manager.Value('i', 0)
         self.index = self.manager.Value('i', -1)
 
     def _monitor(self):
         old = 0
-        while not self._stop.is_set() and old < self.pbar.total:
+        while old < self.pbar.total:
             new = self.counter.value
             if new > old:
                 if self.index.value >= 0:
@@ -1007,7 +1008,6 @@ class ProgressMonitor:
             time.sleep(self.loop_sleep)
 
     def __enter__(self):
-        self._stop = Event()
         self._thread = Thread(target=self._monitor, daemon=True)
         self._thread.start()
         monitor_counter = self.counter
@@ -1021,6 +1021,5 @@ class ProgressMonitor:
         return _tick
 
     def __exit__(self, exc_type, exc, tb):
-        self._stop.set()
-        self._thread.join(timeout=3)
+        self._thread.join(timeout=self.stop_timeout)
         self.manager.shutdown()
