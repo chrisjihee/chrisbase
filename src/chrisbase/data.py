@@ -986,10 +986,11 @@ def find_sublist_range(haystack: List[Any], sublist: List[Any], case_sensitive: 
     return list()
 
 
-def monitor_progress(pbar: ProgIter, monitor_sleep: float = 0.01) -> Tuple[Callable[[int, int], None], Callable[[], None]]:
+@contextmanager
+def monitor_progress(pbar: ProgIter, monitor_sleep: float = 0.01):
     manager = mp.Manager()
     counter = manager.Value('i', 0)
-    last_idx = manager.Value('i', -1)
+    work_index = manager.Value('i', -1)
 
     # -------- 모니터 스레드 --------
     def _monitor():
@@ -997,8 +998,8 @@ def monitor_progress(pbar: ProgIter, monitor_sleep: float = 0.01) -> Tuple[Calla
         while old < pbar.total:
             new = counter.value
             if new > old:
-                if last_idx.value >= 0:
-                    pbar.set_extra(f"index={last_idx.value}")
+                if work_index.value >= 0:
+                    pbar.set_extra(f"index={work_index.value}")
                 pbar.step(new - old, force=True)
                 old = new
             time.sleep(monitor_sleep)
@@ -1007,13 +1008,12 @@ def monitor_progress(pbar: ProgIter, monitor_sleep: float = 0.01) -> Tuple[Calla
     monitor.start()
 
     # -------- 워커에서 사용할 함수 --------
-    def _tick(step: int = 1, idx: int = -1):
+    def _tick(step: int = 1, index: int = -1):
         counter.value += step
-        if idx >= 0:
-            last_idx.value = idx
+        if index >= 0:
+            work_index.value = index
 
-    # -------- main 에서 호출하는 정리 함수 --------
-    def _finalize():
+    try:
+        yield _tick
+    finally:
         monitor.join()
-
-    return _tick, _finalize
