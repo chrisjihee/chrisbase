@@ -16,7 +16,7 @@ from datetime import timedelta
 from io import IOBase
 from itertools import islice
 from pathlib import Path
-from threading import Thread
+from threading import Thread, Event
 from typing import Any, Callable, Optional, ClassVar
 from typing import Iterable, List, Tuple, Mapping
 
@@ -997,7 +997,7 @@ class ProgressMonitor:
 
     def _monitor(self):
         old = 0
-        while old < self.pbar.total:
+        while not self._stop.is_set() and old < self.pbar.total:
             new = self.counter.value
             if new > old:
                 if self.index.value >= 0:
@@ -1007,6 +1007,7 @@ class ProgressMonitor:
             time.sleep(self.loop_sleep)
 
     def __enter__(self):
+        self._stop = Event()
         self._thread = Thread(target=self._monitor, daemon=True)
         self._thread.start()
         monitor_counter = self.counter
@@ -1020,5 +1021,6 @@ class ProgressMonitor:
         return _tick
 
     def __exit__(self, exc_type, exc, tb):
-        self._thread.join()
+        self._stop.set()
+        self._thread.join(timeout=3)
         self.manager.shutdown()
