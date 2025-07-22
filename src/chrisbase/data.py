@@ -4,7 +4,9 @@ import itertools
 import json
 import logging
 import math
+import multiprocessing as mp
 import sys
+import time
 import warnings
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -14,6 +16,7 @@ from datetime import timedelta
 from io import IOBase
 from itertools import islice
 from pathlib import Path
+from threading import Thread
 from typing import Any, Callable, Optional, ClassVar
 from typing import Iterable, List, Tuple, Mapping
 
@@ -33,6 +36,7 @@ from typing_extensions import Self
 from chrisbase.io import get_hostname, get_hostaddr, current_file, first_or, cwd, hr, flush_or, make_parent_dir, setup_unit_logger, setup_dual_logger, open_file, file_lines, new_path, get_http_clients, log_table, LoggingFormat, to_yaml
 from chrisbase.time import now, str_delta
 from chrisbase.util import tupled, SP, NO, to_dataframe
+from progiter import ProgIter
 
 logger = logging.getLogger(__name__)
 
@@ -980,3 +984,53 @@ def find_sublist_range(haystack: List[Any], sublist: List[Any], case_sensitive: 
         if haystack[i:i + sub_len] == sublist:
             return list(range(i, i + sub_len))
     return list()
+
+
+def init_progress(total: int,
+                  desc: str,
+                  stream,
+                  monitor_sleep: float = 0.01
+                  ) -> Tuple[ProgIter, Callable[[int, int], None], Callable[[], None]]:
+    """
+    total          : 전체 작업 개수
+    desc           : ProgIter 설명
+    stream         : 출력 스트림
+    monitor_sleep  : 모니터 스레드 sleep 간격
+
+    반환값
+    1) pbar        : ProgIter 인스턴스 (main 프로세스용)
+    2) tick_fn     : 워커 프로세스에서 호출할 함수 (step, index 기록)
+    3) finalize_fn : main 에서 호출해 모니터 스레드 join + pbar.end()
+    """
+    manager = mp.Manager()
+    counter = manager.Value('i', 0)
+    last_idx = manager.Value('i', -1)
+
+    with ProgIter(desc=desc, total=total, stream=stream, verbose=3) as pbar:
+
+        # -------- 모니터 스레드 --------
+        def _monitor():
+            old = 0
+            while old < total:
+                new = counter.value
+                if new > old:
+                    pbar.set_extra(f"index={last_idx.value}")
+                    pbar.step(new - old)
+                    old = new
+                time.sleep(monitor_sleep)
+            pbar.end()
+
+        mon_thr = Thread(target=_monitor, daemon=True)
+        mon_thr.start()
+
+        # -------- 워커에서 사용할 함수 --------
+        def _tick(step: int = 1, idx: int = -1):
+            counter.value += step
+            if idx >= 0:
+                last_idx.value = idx
+
+        # -------- main 에서 호출하는 정리 함수 --------
+        def _finalize():
+            mon_thr.join()
+
+        return pbar, _tick, _finalize
