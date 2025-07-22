@@ -313,6 +313,19 @@ class TableOption(StreamOption):
     find: dict = field(default_factory=dict)
     timeout: int = field(default=30 * 1000)
 
+    def clone(self, reset: bool = False) -> "TableOption":
+        return TableOption(
+            name=self.name,
+            home=self.home,
+            user=self.user,
+            pswd=self.pswd,
+            reset=reset,
+            required=self.required,
+            sort=self.sort,
+            find=self.find,
+            timeout=self.timeout,
+        )
+
     @staticmethod
     def from_path(path: str | Path, user: str | None = None, pswd: str | None = None,
                   sort: str | List[Tuple[str, int] | str] = "_id", find: dict | None = None, timeout: int = 30 * 1000,
