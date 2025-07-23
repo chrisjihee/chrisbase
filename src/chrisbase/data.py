@@ -987,10 +987,10 @@ def find_sublist_range(haystack: List[Any], sublist: List[Any], case_sensitive: 
 
 
 class ProgressMonitor:
-    def __init__(self, pbar: ProgIter, force: bool = True, loop_sleep: float = 0.001, stop_timeout: float = 0.5):
+    def __init__(self, pbar: ProgIter, force: bool = True, loop_pause: float = 0.001, stop_timeout: float = 1.0):
         self.pbar = pbar
         self.force = force
-        self.loop_sleep = loop_sleep
+        self.loop_pause = loop_pause
         self.stop_timeout = stop_timeout
         self.manager = multiprocessing.Manager()
         self.counter = self.manager.Value('i', 0)
@@ -1005,7 +1005,7 @@ class ProgressMonitor:
                     self.pbar.set_extra(f"index={self.index.value}")
                 self.pbar.step(new - old, force=self.force)
                 old = new
-            time.sleep(self.loop_sleep)
+            time.sleep(self.loop_pause)
 
     def __enter__(self):
         self._thread = Thread(target=self._monitor, daemon=True)
@@ -1021,5 +1021,21 @@ class ProgressMonitor:
         return _tick
 
     def __exit__(self, exc_type, exc, tb):
+        max_wait_time = max(self.stop_timeout * 2, 2.0)
+        wait_interval = 0.1
+        waited_time = 0.0
+
+        while waited_time < max_wait_time:
+            try:
+                if self.counter.value >= self.pbar.total:
+                    break
+            except (ConnectionError, EOFError, OSError):
+                break
+            time.sleep(wait_interval)
+            waited_time += wait_interval
+
         self._thread.join(timeout=self.stop_timeout)
-        self.manager.shutdown()
+        try:
+            self.manager.shutdown()
+        except (ConnectionError, EOFError, OSError):
+            pass
