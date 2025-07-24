@@ -995,23 +995,22 @@ class ProgressMonitor:
         self.manager = multiprocessing.Manager()
         self.counter = self.manager.Value('i', 0)
         self.index = self.manager.Value('i', -1)
+        self.lock = self.manager.Lock()
         self._stop_event: Event = Event()
 
     def _monitor(self):
         old = 0
         while not self._stop_event.is_set() and old < self.pbar.total:
             try:
-                new = self.counter.value
-            except (OSError, ConnectionError, EOFError):
-                break
-            if new > old:
-                try:
+                with self.lock:
+                    new = self.counter.value
                     if self.index.value >= 0:
                         self.pbar.set_extra(f"index={self.index.value}")
-                    self.pbar.step(new - old, force=self.force)
-                except Exception:
-                    pass
-                old = new
+                    if new > old:
+                        self.pbar.step(new - old, force=self.force)
+                        old = new
+            except (OSError, ConnectionError, EOFError):
+                break
             time.sleep(self.loop_pause)
 
     def __enter__(self):
@@ -1019,11 +1018,13 @@ class ProgressMonitor:
         self._thread.start()
         monitor_counter = self.counter
         monitor_index = self.index
+        monitor_lock = self.lock
 
         def _tick(step: int = 1, index: int = -1):
-            monitor_counter.value += step
-            if index >= 0:
-                monitor_index.value = index
+            with monitor_lock:
+                monitor_counter.value += step
+                if index >= 0:
+                    monitor_index.value = index
 
         return _tick
 
