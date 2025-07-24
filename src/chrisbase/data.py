@@ -995,15 +995,22 @@ class ProgressMonitor:
         self.manager = multiprocessing.Manager()
         self.counter = self.manager.Value('i', 0)
         self.index = self.manager.Value('i', -1)
+        self._stop_event: Event = Event()
 
     def _monitor(self):
         old = 0
-        while old < self.pbar.total:
-            new = self.counter.value
+        while not self._stop_event.is_set() and old < self.pbar.total:
+            try:
+                new = self.counter.value
+            except (OSError, ConnectionError, EOFError):
+                break
             if new > old:
-                if self.index.value >= 0:
-                    self.pbar.set_extra(f"index={self.index.value}")
-                self.pbar.step(new - old, force=self.force)
+                try:
+                    if self.index.value >= 0:
+                        self.pbar.set_extra(f"index={self.index.value}")
+                    self.pbar.step(new - old, force=self.force)
+                except Exception:
+                    pass
                 old = new
             time.sleep(self.loop_pause)
 
@@ -1021,21 +1028,6 @@ class ProgressMonitor:
         return _tick
 
     def __exit__(self, exc_type, exc, tb):
-        max_wait_time = max(self.stop_timeout * 2, 2.0)
-        wait_interval = 0.1
-        waited_time = 0.0
-
-        while waited_time < max_wait_time:
-            try:
-                if self.counter.value >= self.pbar.total:
-                    break
-            except (ConnectionError, EOFError, OSError):
-                break
-            time.sleep(wait_interval)
-            waited_time += wait_interval
-
+        self._stop_event.set()
         self._thread.join(timeout=self.stop_timeout)
-        try:
-            self.manager.shutdown()
-        except (ConnectionError, EOFError, OSError):
-            pass
+        self.manager.shutdown()
