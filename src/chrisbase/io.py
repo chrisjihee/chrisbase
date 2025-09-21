@@ -13,6 +13,7 @@ import subprocess
 import sys
 import traceback
 import warnings
+from enum import Enum
 from io import IOBase
 from ipaddress import IPv4Address
 from itertools import chain
@@ -34,8 +35,6 @@ from chrisbase.util import tupled, OX
 logger = logging.getLogger(__name__)
 sys_stdout = sys.stdout
 sys_stderr = sys.stderr
-
-from enum import Enum
 
 
 class LoggingFormat(Enum):
@@ -620,7 +619,7 @@ def to_yamlable(obj):
     - set/tuple -> list
     - dict -> recursively processed
     """
-    if isinstance(obj, enum.Enum):
+    if isinstance(obj, Enum):
         try:
             return obj.value
         except Exception:
