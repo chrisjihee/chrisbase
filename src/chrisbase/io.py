@@ -613,6 +613,25 @@ def _path_to_str(obj):
     return obj
 
 
+def to_yamlable(obj):
+    """Recursively convert objects to YAML-serializable types.
+
+    - Enum -> its value (or str(value))
+    - set/tuple -> list
+    - dict -> recursively processed
+    """
+    if isinstance(obj, enum.Enum):
+        try:
+            return obj.value
+        except Exception:
+            return str(obj)
+    if isinstance(obj, (set, tuple, list)):
+        return [to_yamlable(x) for x in obj]
+    if isinstance(obj, dict):
+        return {k: to_yamlable(v) for k, v in obj.items()}
+    return obj
+
+
 def to_yaml(conf, *, resolve=False, sort_keys=False, **kwds):
     if not OmegaConf.is_config(conf):
         conf = OmegaConf.create(conf)
