@@ -76,6 +76,15 @@ def tupled(x: any):
         return x
 
 
+def listified(x: any):
+    if isinstance(x, list):
+        return x
+    elif isinstance(x, Iterable):
+        return [i for i in x]
+    else:
+        return [x]
+
+
 def shuffled(xs, seed=0, ran=None):
     if ran is None:
         ran = random.Random(seed)
